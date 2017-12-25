@@ -156,30 +156,6 @@ Value	Storage length	Format
     versionBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ lockTimeBytes
   }.toArray
   
-  /*  val (version, versionBytes) = usingBytes(getNext4Int)
-    val isSegWit = bytes(currCtr) == 0.toByte
-    val (ins, outs, flagBytes, wits, inBytes, outBytes, witBytes) = if (isSegWit) { 
-      // 1st byte after version is 00 in version bytes, its a segwit tx
-      val flagBytes = getNextBytes(2) // skip 2 bytes, should also validate them!
-      val (ins, inBytes) = usingBytes(getTxIns)
-      val (outs, outBytes) = usingBytes(getTxOuts)
-      val (wits, witBytes) = usingBytes(getTxWits(ins.size))
-      (ins, outs, flagBytes, wits, inBytes, outBytes, witBytes)
-    } else { // non-segwit tx
-      val (ins, inBytes) = usingBytes(getTxIns)
-      val (outs, outBytes) = usingBytes(getTxOuts)
-      (ins, outs, Nil, Nil, inBytes, outBytes, Nil)
-    }
-    val (lockTime, lockTimeBytes) = usingBytes(getNext4Int)
-    val classicRaw = versionBytes ++ inBytes ++ outBytes ++ lockTimeBytes
-    val size = classicRaw.size
-    val txId = getHashed(classicRaw)
-    val (segWitTxHash, vSize) = if (isSegWit) {
-      val segWitRaw = versionBytes ++ flagBytes ++ inBytes ++ outBytes ++ witBytes ++ lockTimeBytes
-      (getHashed(segWitRaw), math.ceil((3 * size + segWitRaw.size)/4d).toInt)
-    } else (txId, size)
-    TxSegWit(version, ins, outs, wits, lockTime, txId, isSegWit, segWitTxHash, size, vSize)
- */  
   def createSegWitTxRaw(ins:Seq[In], outs:Seq[Out]):Array[Byte] = createSegWitTxRaw(ins.map((_, Wit(Nil))), outs)
   
   def createSegWitTxRaw(insWits:Seq[(In, Wit)], outs:Seq[Out], lockTime:Long = 0) = {    // inputs also contains amount
