@@ -7,13 +7,14 @@ import sh.btc.BitcoinUtil._
 
 
 abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Boolean) {
-  if (key > n) throw new Exception(s"Private key must be < $n")
+  if (key >= n) throw new Exception(s"Private key must be < $n")
+  if (key <= 0) throw new Exception(s"Private key must be > 0")
 
   val pubKey = key * G // G is generator of EC
 
   pubKey.isCompressed = compressed // set compressed info for pub key
   
-  protected val keyHex = key.toHex
+  protected lazy val keyHex = key.toHex
   protected lazy val keyBytes = key.toBytes 
   
   //val pubKeyHex = pubKey.pubKeyHex 
@@ -32,9 +33,11 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
     val h1 = getBits(hash) // a
     var V = Array.fill(32)(0x01.toByte) // b
     var K = Array.fill(32)(0x00.toByte) // c
-    K = HMAC(K)(V ++ Array(0x00.toByte) ++ intToOctets(key) ++ bitsToOctets(h1)) // d
+    val intToOctets_key = intToOctets(key)
+    val bitsToOctets_h1 = bitsToOctets(h1)
+    K = HMAC(K)(V ++ Array(0x00.toByte) ++ intToOctets_key ++ bitsToOctets_h1) // d
     V = HMAC(K)(V) // e
-    K = HMAC(K)(V ++ Array(0x01.toByte) ++ intToOctets(key) ++ bitsToOctets(h1)) // f
+    K = HMAC(K)(V ++ Array(0x01.toByte) ++ intToOctets_key ++ bitsToOctets_h1) // f
     V = HMAC(K)(V) // g
     var optKR:Option[(BigInt, BigInt)] = None  // first is k, second is r
     while(optKR.isEmpty) { // h
