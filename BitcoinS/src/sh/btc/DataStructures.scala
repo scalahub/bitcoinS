@@ -6,6 +6,7 @@ import sh.ecc.Util._
 
 
 object DataStructures {
+  
   case class In(txHash:String, vOut:Int) {
     var optScriptSig:Option[Seq[Byte]] = None
     def setScriptSig(scriptSig:Seq[Byte]) = {
@@ -13,11 +14,8 @@ object DataStructures {
       this
     }
     
-    // below directly stored as serialized (i.e., little endian)
-    // and parsed as bytes, not num
     var seqNum:Long = BigInt("FFFFFFFF", 16).toLong
     def setSeqNum(long:Long) = {
-      //if (seqNum.size != 4) throw new Exception("Seq number must be 4 bytes")
       this.seqNum = long
       this
     }
@@ -30,7 +28,8 @@ object DataStructures {
     override def toString = optAddress.getOrElse("None")+":"+value
     lazy val optScriptPubKey = optAddress.map(getScriptPubKeyFromAddress)
   }        
-  case class Wit(data:Seq[Seq[Byte]]) {
+  
+  case class Wit(data:Seq[Seq[Byte]]) { // witness is a seq of stack element, each a seq of byte
     override def toString = s"witness_{data.size}_bytes"
   }
 
@@ -44,11 +43,11 @@ object DataStructures {
       ins foreach (in => println("In <- "+in))
       outs.zipWithIndex foreach {case (out, i) => println(s"Out -> $txid:$i => "+out)}
       println
-    }
-    
+    }    
   }
   
   class BitcoindBlockSummary(hash:String, prevBlockHash:String, time:Long, version:Long, txHashes:Seq[String]) 
+  
   case class BitcoindBlock(
     hash:String, prevBlockHash:String, time:Long, version:Long, txs:Seq[TxSegWit], hexTxs:Seq[String]
   ) extends BitcoindBlockSummary(hash, prevBlockHash, time, version, txs.map(_.txid)) 
