@@ -8,14 +8,15 @@ import sh.btc.BitcoinUtil._
 
 abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Boolean) {
   if (key > n) throw new Exception(s"Private key must be < $n")
-  val pubKey:PubKey = key * G // G is generator of EC
-  pubKey.isCompressed = compressed
+
+  val pubKey = key * G // G is generator of EC
+
+  pubKey.isCompressed = compressed // set compressed info for pub key
   
   protected val keyHex = key.toHex
-
   protected lazy val keyBytes = key.toBytes 
   
-  val pubKeyHex = pubKey.pubKeyHex 
+  //val pubKeyHex = pubKey.pubKeyHex 
 
   @deprecated("Should not be exposed", "22 Dec 2017")
   def getWIF:String = getBase58FromBytes( // from BitcoinUtil
@@ -30,19 +31,19 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
     if (hash.size != 32) throw new Exception("Hash must be 32 bytes")
     val h1 = getBits(hash) // a
     var V = Array.fill(32)(0x01.toByte) // b
-    var K =  Array.fill(32)(0x00.toByte) // c
+    var K = Array.fill(32)(0x00.toByte) // c
     K = HMAC(K)(V ++ Array(0x00.toByte) ++ intToOctets(key) ++ bitsToOctets(h1)) // d
     V = HMAC(K)(V) // e
     K = HMAC(K)(V ++ Array(0x01.toByte) ++ intToOctets(key) ++ bitsToOctets(h1)) // f
     V = HMAC(K)(V) // g
-    var optKR:Option[(BigInt, BigInt)] = None 
+    var optKR:Option[(BigInt, BigInt)] = None  // first is k, second is r
     while(optKR.isEmpty) { // h
-      var T = Array[Byte]() // h.1
+      var T = Array[Byte]() // h.1 // generates empty byte array
       while(T.size < 32) T = T ++ HMAC(K)(V)  // h.2
       val k = bitsToInt(getBits(T)) // h.3      
       if (k < n && k > 0) { 
         val r = (k * G).x mod n
-        if (r != 0) optKR = Some((k, r))else {
+        if (r != 0) optKR = Some((k, r)) else {
           K = HMAC(K)(V ++ Array(0x00.toByte))
           V = HMAC(K)(V)
         }
