@@ -3,9 +3,9 @@ package sh.btc
 
 
 import sh.btc.DataStructures._
+//import sh.ecc.Util._
 import sh.ecc._
 import sh.util.CurlJsonData
-import sh.util.Hex
 
 object TestBitcoindAPI extends App {
   BitcoinUtil.isMainNet = false
@@ -47,8 +47,9 @@ object ParserTest extends App{  // tests the tx parser of BitcoindAPI (that pars
   assert(nonSegWitTx.segWitTxHash == "1ccc8eb9f20925639cc0e4276ce1493e223cc94aeaebe7b1a66746a85e4ba125")
   assert(segWitTx.segWitTxHash == "23c0084a8bfc410e46a1ba315c8cd393db45f8e80df7c3aabe0c175b2d6372f8")
   val wit = segWitTx.witnesses(0)
-  assert(Hex.encodeBytes(wit.data(0)).toLowerCase == "3044022055863405aab0bab1dc76e6ef2f573e40df6cfdf2f0ee8235c4b82fff61ba7514022078bc22c5c2954d7f2d2f6ff438e7c2e88bcf815d09067982e6340750decbf0d601")
-  assert(Hex.encodeBytes(wit.data(1)).toLowerCase == "039f53e45f8f18b8ed294378bda342eff69b2053debf27fbede7d2d6bd84be6235")
+  import sh.ecc.Util._
+  assert(wit.data(0).toArray.encodeHex.toLowerCase == "3044022055863405aab0bab1dc76e6ef2f573e40df6cfdf2f0ee8235c4b82fff61ba7514022078bc22c5c2954d7f2d2f6ff438e7c2e88bcf815d09067982e6340750decbf0d601")
+  assert(wit.data(1).toArray.encodeHex.toLowerCase == "039f53e45f8f18b8ed294378bda342eff69b2053debf27fbede7d2d6bd84be6235")
 
 }
 

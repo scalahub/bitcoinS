@@ -1,8 +1,8 @@
 
 package sh.ecc
 
-import sh.util.Hex
 import sh.util.Base58Check
+import sh.ecc.Util._
 
 object PrvKey {
   def apply(wif:String) = {
@@ -15,7 +15,7 @@ object PrvKey {
     }
     val isCompressed = bytes.last == 0x01 && bytes.size == 34    
     val keyBytes = if (isCompressed) bytes.drop(1).take(32) else bytes.drop(1)
-    new PrvKey(Hex.encodeBytes(keyBytes), isCompressed)
+    new PrvKey(keyBytes.encodeHex, isCompressed)
   }
 }
 

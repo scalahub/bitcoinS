@@ -1,7 +1,7 @@
 package sh.btc
 
 import sh.util.Base58Check
-import sh.util.Hex
+//import sh.util.Hex
 import BitcoinUtil._
 import sh.btc.DataStructures._
 import sh.ecc.Util._
@@ -54,25 +54,23 @@ object BitcoinUtil {
   
   def getUInt4LittleEndian(bytes:Array[Byte]) = { // returns integer from 4 bytes int 
     if (bytes.size != 4) throw new Exception("Expected 4 bytes in UINT32. Found "+bytes.size)
-    BigInt(Hex.encodeBytes(bytes.reverse), 16).toLong 
+    BigInt(bytes.reverse.encodeHex, 16).toLong 
   }
 
   def getUInt8LittleEndian(bytes:Array[Byte]) = { // returns integer from 4 bytes int 
     if (bytes.size != 8) throw new Exception("Expected 8 bytes in UINT64. Found "+bytes.size)
-    BigInt(Hex.encodeBytes(bytes.reverse), 16)
+    BigInt(bytes.reverse.encodeHex, 16)
   }
   
   // below method to rename, its not really hash, but rather hexEncodedFromLittleEndian
-  def getHashFromBytes(bytes:Array[Byte]) = Hex.encodeBytes(bytes.reverse)
+  def getHexFromLittleEndian(bytes:Array[Byte]) = bytes.reverse.encodeHex
   
   def getBase58FromBytes(addrBytes:Array[Byte]) = 
     Base58Check.encodePlain(addrBytes ++ dsha256(addrBytes).take(4))
   
-  def dsha256(bytes:Seq[Byte]) = sha256Bytes2Bytes(sha256Bytes2Bytes(bytes.toArray))
-  
   def hash160(bytes:Seq[Byte]) = ripeMD160(sha256Bytes2Bytes(bytes.toArray))
   
-  def getHashed(bytes:Seq[Byte]) = Hex.encodeBytes(dsha256(bytes.toArray).reverse).toLowerCase
+  def getHashed(bytes:Seq[Byte]) = dsha256(bytes.toArray).reverse.encodeHex.toLowerCase
   
   def getAddrFromOutScript(outScript:Array[Byte]) = {
     // if its a simple pay to address (OP_DUP OP_HASH160 OP_PUSHDATXX)
@@ -135,7 +133,7 @@ Value	Storage length	Format
   def createNonSegWitTxRaw(ins:Seq[In], outs:Seq[Out], lockTime:Long = 0) = {
     val inCtrBytes = getVarIntBytes(ins.size)
     val inBytes = ins.flatMap{in =>
-      val prevTxHashBytes = Hex.decode(in.txHash.grouped(2).toSeq.reverse.mkString)
+      val prevTxHashBytes = in.txHash.grouped(2).toSeq.reverse.mkString.decodeHex
       val vOutBytes = getFixedIntBytes(in.vOut, 4)
       val scriptSig = in.optScriptSig.getOrElse(Nil)
       val scriptSigBytes = getVarIntBytes(scriptSig.size) 
@@ -161,7 +159,7 @@ Value	Storage length	Format
   def createSegWitTxRaw(insWits:Seq[(In, Wit)], outs:Seq[Out], lockTime:Long = 0) = {    // inputs also contains amount
     val (ins, wits) = insWits.unzip
     val inBytes = ins.flatMap{in =>
-      val prevTxHashBytes = Hex.decode(in.txHash.grouped(2).toSeq.reverse.mkString)
+      val prevTxHashBytes = in.txHash.grouped(2).toSeq.reverse.mkString.decodeHex
       val vOutBytes = getFixedIntBytes(BigInt(in.vOut), 4)
       val scriptSig = in.optScriptSig.getOrElse(Nil)
       val scriptSigBytes = getVarIntBytes(scriptSig.size) 
@@ -190,5 +188,8 @@ Value	Storage length	Format
     val lockTimeBytes = getFixedIntBytes(lockTime, 4) // should be Seq[Byte](0x00, 0x00, 0x00, 0x00)
     versionBytes ++ flagMarkerBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ witBytes ++ lockTimeBytes
   }.toArray
+  
+  def getMessageToSignBitcoinD(message:String) = 
+    Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
   
 }

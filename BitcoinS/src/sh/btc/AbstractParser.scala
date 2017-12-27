@@ -17,7 +17,7 @@ abstract class AbstractParser(bytes:Array[Byte]) {
   
   protected def getBytes(from:Int, to:Int) = (from to to).map(i => bytes(i))
   
-  protected def getNext32Hash = getHashFromBytes(getNextBytes(32).toArray)
+  protected def getNext32Hash = getHexFromLittleEndian(getNextBytes(32).toArray)
   
   protected def getNext4Int = getUInt4LittleEndian(getNextBytes(4).toArray)
   

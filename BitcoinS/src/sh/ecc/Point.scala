@@ -2,7 +2,6 @@
 package sh.ecc
 
 import Util._
-import sh.util.Hex
 import sh.btc.BitcoinUtil._
 import sh.btc._
 
@@ -38,16 +37,21 @@ case class Point(x:BigInt, y:BigInt) {
   if (x >= p || y >= p) throw new Exception("Invalid point. X and Y must be < p")
   if (x <= 0 || y <= 0) throw new Exception("Invalid point. X and Y must be > 0")
   def this(xHex:String, yHex:String) = this(BigInt(xHex, 16) mod p, BigInt(yHex, 16) mod p)
-  var isCompressed = true
+  var isCompressed = true // default is compressed
+  def setCompressed(compressed:Boolean) = {
+    isCompressed = compressed
+    this
+  }
+  
   override def toString = x+","+y
   // sanity check
-  if (!isCurvePoint) throw new Exception("Not a curve point on SECP256k1")
+  if (!isCurvePoint(x, y)) throw new Exception("Not a curve point on SECP256k1")
   
   // https://bitcoin.stackexchange.com/a/25448/2075
   def + (that:Point):Point = {
     // below checks if p.x == x but p.y != y (i.e. p is a reflection of this point on x axis)
     val slope = if (that.x == x) { // same point, use point doubling formula instead
-      if (that.y != y) throw new Exception("Point at infinity") // we should never encounter this point!      
+      if (that.y != y) throw PointAtInfinityException // we should never encounter this point!      
       (((3 * x * x) mod p) * (2 * y).modInverse(p)) mod p
     } else {
       ((y - that.y) * (x - that.x).modInverse(p)) mod p
@@ -83,41 +87,15 @@ case class Point(x:BigInt, y:BigInt) {
   // point subtraction
   def - (that:Point) = this + (-that) 
   
-  // check that point satisfies y^2 = x^3 + 7 (mod p)
-  def isCurvePoint = ((((y * y) mod p) - 7 - (x modPow (3, p))) mod p) == 0
-  
   // point doubling
   def double:Point = this + this
-  
-  // verify signature on msg (human string, such as "Hello") and signature Hex encoded
-  def verify(msg:String, signature:String):Boolean = {
-    val sig = Hex.decode(signature)
-    if (sig(0) != 0x30.toByte) throw new Exception(s"Invalid signature: First byte must be ${0x30}. Found ${sig(0)}")    
-    val tLen = sig(1).intValue + 2
-    if (sig.size != tLen) throw new Exception(s"Expected $tLen bytes in signature. Found ${sig.size} bytes.")
-    if (sig(2) != 0x02.toByte) throw new Exception(s"Invalid signature: Third byte must be ${0x02}. Found ${sig(2)}")    
-    val rLen = sig(3).intValue
-    val r = BigInt(sig.drop(4).take(rLen))
-    val right = sig.drop(4+rLen)
-    if (right(0) != 0x02.toByte) throw new Exception(s"Invalid signature: ${4+rLen}-th byte must be ${0x02}. Found ${right(0)}")    
-    val sLen = right(1).intValue
-    if (right.drop(2).size != sLen) throw new Exception(s"Invalid signature: extra bytes after s encoding: ${Hex.encodeBytes(right.drop(2+sLen))}")    
-    val s = BigInt(right.drop(2))
-    verify(msg, r, s)
-    /*  Example:
-	30 46 02 21 00E755B8C887AF3C97822875908B1BD4566ECAC5BEE9A2BF736C19A4E4BE74F5F8
-	      02 21 00A18B52AE9FBE0DE525F6FA58B68D5AC74308886AAC1AA0AB4A7EC55087C85C0C */            
-  }
-  
-  // verify signature on msg (human string, such as "Hello") and signature in r, s form
-  def verify(msg:String, r:BigInt, s:BigInt):Boolean = verify(sha256Bytes2Bytes(msg.getBytes), r, s)
   
   // verify signature on 32 byte hash (such as hash("Hello")) and signature in r, s form
   def verify(hash:Array[Byte], r:BigInt, s:BigInt) = {
     if (r >= n || s >= n || r < 1 || s < 1) throw new Exception(s"Invalid signature: r and s must be between 1 and $n")    
     if (hash.size != 32) throw new Exception("Hash must be 32 bytes")
     val w = s.modInverse(n)
-    val z = BigInt(Hex.encodeBytes(hash), 16)
+    val z = BigInt(hash.encodeHex, 16)
     val u1 = (z * w) mod n
     val u2 = (r * w) mod n
     val pt = (u1 * G) + (u2 * this)
@@ -126,18 +104,20 @@ case class Point(x:BigInt, y:BigInt) {
 
   // Important! Don't make below to val (keep it def) 
   // since it depends on isCompressed, which is set later after object initialization
-  def pubKeyHex = if (isCompressed) {
-    (if (y.lowestSetBit == 0) "03" else "02") + x.toHex 
-  } else {
-    "04"+x.toHex+y.toHex
+  def hex = {
+    if (isCompressed) {
+      (if (y.lowestSetBit == 0) "03" else "02") + x.toHex(32) 
+    } else {
+      "04"+x.toHex(32)+y.toHex(32)
+    }
   }
   // Important! Don't make below to val (keep it def) 
   // since it depends on isCompressed, which is set later after object initialization
-  def pubKeyBytes = Hex.decode(pubKeyHex)
+  def bytes = hex.decodeHex
  
   // Important! Don't make below to val (keep it def) 
   // since it depends on isCompressed, which is set later after object initialization
-  private [sh] def doubleHashedPubKeyBytes = ripeMD160(sha256Bytes2Bytes(pubKeyBytes))
+  private [sh] def doubleHashedPubKeyBytes = ripeMD160(sha256Bytes2Bytes(bytes))
     
   /*  Details:
       https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
@@ -158,7 +138,7 @@ case class Point(x:BigInt, y:BigInt) {
       Signature script: <sig> [sig] [sig...] <redeemScript>   */
   // public key will be either 65 (uncompressed) or 33 (compressed)
   // this size of pubKey is <= 75 and can be represented in one byte (pushdata)
-  def getRedeemScript_P2SH_P2PK = Seq(pubKeyBytes.size.toByte)++pubKeyBytes++Seq(OP_CheckSig)
+  def getRedeemScript_P2SH_P2PK = Seq(bytes.size.toByte)++bytes++Seq(OP_CheckSig)
   
   def getAddress_P2SH_P2PK = { // simple 1 out of 1 P2SH from BIP16
     val redeemScriptHash = hash160(getRedeemScript_P2SH_P2PK.toArray)
@@ -166,7 +146,7 @@ case class Point(x:BigInt, y:BigInt) {
     getBase58FromBytes(addrBytes) 
   }
   
-  def getRedeemScript_P2WPKH = Hex.decode("0014") ++ doubleHashedPubKeyBytes   // 00147646c030f7e75b80f0a31cdcab731e6f424f22b2
+  def getRedeemScript_P2WPKH = "0014".decodeHex ++ doubleHashedPubKeyBytes   // 00147646c030f7e75b80f0a31cdcab731e6f424f22b2
   /*  To create a P2SH-P2WPKH address:
 
       Calculate the RIPEMD160 of the SHA256 of a public key (keyhash). 
@@ -208,4 +188,53 @@ case class Point(x:BigInt, y:BigInt) {
     val addrBytes = (if (BitcoinUtil.isMainNet) 0x05.toByte else 196.toByte) +: redeemScriptHash
     BitcoinUtil.getBase58FromBytes(addrBytes)
   }
+
+  def encodeRecoverySig(r:BigInt, s:BigInt, hash:Array[Byte]):Array[Byte] = {
+    val recovered = recoverPubKeys(r, s, hash).zipWithIndex.collect{
+      case (Some(pk), i) if pk == this => // valid pub key matching this pub key, note the backticks 
+        i
+        // i will be one of 0, 1, 2, 3
+        // (only one will match)
+        // if compressed, we need to add 4 and get corresponding i
+    
+        /*  `recid`'s encoding might be one of the following:
+          0x1B ->  R_y even | R_x < n | P uncompressed
+          0x1C ->  R_y odd  | R_x < n | P uncompressed
+          0x1D ->  R_y even | R_x > n | P uncompressed
+          0x1E ->  R_y odd  | R_x > n | P uncompressed
+          0x1F ->  R_y even | R_x < n | P compressed
+          0x20 ->  R_y odd  | R_x < n | P compressed
+          0x21 ->  R_y even | R_x > n | P compressed
+          0x22 ->  R_y odd  | R_x > n | P compressed    */
+    }
+    assert(recovered.size == 1)
+    val index = recovered.head    
+    val byteIndex = if (isCompressed) index + 4 else index 
+    encodeRecoverySigForIndex(byteIndex, r, s)
+  }
+  // verify signature on msg (human string, such as "Hello") and signature Base64 encoded
+  def verifyMessageBitcoinD(message:String, sig:String) = {
+    val msg = Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
+    val hash = dsha256(msg)
+    val (id, r, s) = decodeRecoverySig(sig.decodeBase64)
+    verify(hash, r, s)
+  }
+  /* // other verify constructs used for testing but not needed in production. Hence commented out
+  def verify(msg:String, signature:String):Boolean = {
+    val (r, s) = decodeDERSig(signature)
+    verify(msg, r, s)
+    /*  Example:
+	30 46 02 21 00E755B8C887AF3C97822875908B1BD4566ECAC5BEE9A2BF736C19A4E4BE74F5F8
+	      02 21 00A18B52AE9FBE0DE525F6FA58B68D5AC74308886AAC1AA0AB4A7EC55087C85C0C */            
+  }
+  def verifyMessageBitcoinD(message:String, r:BigInt, s:BigInt) = {
+    val msg = Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
+    val hash = dsha256(msg)
+    verify(hash, r, s)
+  }
+  
+  // verify signature on msg (human string, such as "Hello") and signature in r, s form
+  def verify(msg:String, r:BigInt, s:BigInt):Boolean = verify(sha256Bytes2Bytes(msg.getBytes), r, s)
+  */
+
 }

@@ -2,8 +2,9 @@ package sh
 
 
 import sh.ecc._
+import sh.ecc.Util._
 import sh.btc._
-import sh.util.Hex
+//import sh.util.Hex
 import sh.btc.DataStructures._
 import sh.btc.BitcoinUtil._
 
@@ -47,7 +48,7 @@ object TestSegWit extends App {
   
   
   val parsed = new TxParserSegWit(signed).getSegWitTx
-  println("Hex: "+Hex.encodeBytes(signed))
+  println("Hex: "+signed.encodeHex)
   println("txid: "+parsed.txid) // tx is signed // should print 
   println("hash: "+parsed.segWitTxHash)  // tx is signed
   /*  Above tx was sent with txID c2e205d632d589b0a8c52fb71d7ecf35e112b241dca4a8e6d6b411764a630a28
@@ -75,7 +76,7 @@ object TestP2PKH extends App {
   val tx = BitcoinUtil.createNonSegWitTxRaw(Seq(in1, in2), Seq(out1))
   val signed = key.signTx_P2PKH(tx, Seq(0, 1)) // inputs 0 and 1 are P2PKH inputs
   val parsed = new TxParser(signed).getTx
-  println("Hex: "+Hex.encodeBytes(signed)  )
+  println("Hex: "+signed.encodeHex)
   println("txid: "+parsed.txid)
 }
 
@@ -100,7 +101,7 @@ object TestP2SH_P2PK extends App {
   val tx = BitcoinUtil.createNonSegWitTxRaw(Seq(in2, in3, in4), Seq(out2))
   val tx1 = key.signTx_P2SH_P2PK(tx, Seq(0))
   val tx2 = key.signTx_P2PKH(tx1, Seq(1, 2))
-  val signed = Hex.encodeBytes(tx2)  
+  val signed = tx2.encodeHex  
   val parsed = new TxParser(tx2).getTx
   println("Hex: "+signed)
   println("txid: "+parsed.txid)

@@ -3,7 +3,7 @@ package sh
 
 import sh.btc.DataStructures._
 import sh.btc._
-import sh.util.Hex
+//import sh.util.Hex
 import sh.btc.BitcoinUtil._
 import sh.ecc.PrvKey
 import sh.ecc.Util._
@@ -69,29 +69,29 @@ The following is an unsigned transaction: 0100000001db6b1b20aa0fd7b23880be2ecbd4
     nLockTime: 92040000
    */
   val unsigned = "0100000001db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a54770100000000feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac92040000"
-  val tx = new TxParserSegWit(unsigned).getSegWitTx
+  val tx = new TxParserSegWit(unsigned.decodeHex).getSegWitTx
   require(tx.version == 1)
-  require(tx.lockTime == getUInt4LittleEndian("92040000"))
+  require(tx.lockTime == getUInt4LittleEndian("92040000".decodeHex))
   
   val prvKey = new PrvKey("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf", true)
   val pubKey = prvKey.pubKey
-  require(pubKey.pubKeyHex.toLowerCase == "03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873")
+  require(pubKey.hex.toLowerCase == "03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873")
   val redeemScript = pubKey.getRedeemScript_P2WPKH
-  require(Hex.encodeBytes(redeemScript).toLowerCase == "001479091972186c449eb1ded22b78e40d009bdf0089")
+  require(redeemScript.encodeHex.toLowerCase == "001479091972186c449eb1ded22b78e40d009bdf0089")
   val address = pubKey.getAddress_P2WPKH
   val scriptPubKey = getScriptPubKeyFromAddress(address).toArray
-  require(Hex.encodeBytes(scriptPubKey).toLowerCase == "a9144733f37cf4db86fbc2efed2500b4f4e49f31202387")
+  require(scriptPubKey.encodeHex.toLowerCase == "a9144733f37cf4db86fbc2efed2500b4f4e49f31202387")
   
-  val prevTxHash = Hex.encodeBytes(Hex.decode("db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477").reverse)
-  val prevVOut = getUInt4LittleEndian("01000000").toInt
+  val prevTxHash = "db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477".decodeHex.reverse.encodeHex
+  val prevVOut = getUInt4LittleEndian("01000000".decodeHex).toInt
   val in = In(prevTxHash, prevVOut).setSeqNum(BigInt("feffffff", 16).toLong)
   require(prevVOut == 1)
   require(in == tx.ins(0))
-  val outAddr1 = getAddrFromOutScript("76a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac")
-  val outAddr2 = getAddrFromOutScript("76a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac")
+  val outAddr1 = getAddrFromOutScript("76a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac".decodeHex)
+  val outAddr2 = getAddrFromOutScript("76a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac".decodeHex)
   
-  val amt1 = getUInt8LittleEndian("b8b4eb0b00000000")
-  val amt2 = getUInt8LittleEndian("0008af2f00000000")
+  val amt1 = getUInt8LittleEndian("b8b4eb0b00000000".decodeHex)
+  val amt2 = getUInt8LittleEndian("0008af2f00000000".decodeHex)
   
   val out1 = Out(outAddr1, amt1)
   val out2 = Out(outAddr2, amt2)
@@ -99,10 +99,12 @@ The following is an unsigned transaction: 0100000001db6b1b20aa0fd7b23880be2ecbd4
   require(out2 == tx.outs(1))
   // below assumes that the sample uses deterministic k generation used in RFC6969 (which it does!)
   // so the signed tx also matches!
-  val signed = prvKey.signTx_P2SH_P2WPKH(unsigned, Seq((0, 1000000000)))
-  require(Hex.encodeBytes(signed).toLowerCase == "01000000000101db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477010000001716001479091972186c449eb1ded22b78e40d009bdf0089feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac02473044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2687392040000")
+  val signed = prvKey.signTx_P2SH_P2WPKH(unsigned.decodeHex, Seq((0, 1000000000)))
+  require(signed.encodeHex.toLowerCase == "01000000000101db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477010000001716001479091972186c449eb1ded22b78e40d009bdf0089feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac02473044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2687392040000")
   val stx = new TxParserSegWit(signed).getSegWitTx
   println("signed txid "+stx.txid)
   println("signed hash "+stx.segWitTxHash)
+  require(stx.txid == "ef48d9d0f595052e0f8cdcf825f7a5e50b6a388a81f206f3f4846e5ecd7a0c23")
+  require(stx.segWitTxHash == "680f483b2bf6c5dcbf111e69e885ba248a41a5e92070cfb0afec3cfc49a9fabb")
   println("Passed")
 }

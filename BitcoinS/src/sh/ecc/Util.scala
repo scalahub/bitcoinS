@@ -4,7 +4,10 @@ package sh.ecc
 import java.security.MessageDigest
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import sh.util.Base64
 import sh.util.Hex
+
+object PointAtInfinityException extends Exception("Point at Infinity")
 
 object Util {
   type PubKey = Point
@@ -47,6 +50,21 @@ object Util {
     if (y1.lowestSetBit == 0) (y2, y1) else (y1, y2)
   } 
 
+  
+  class BetterString(string:String) {
+    def decodeHex = Hex.decode(string)
+    def decodeBase64 = Base64.decode(string)
+  }
+
+  class BetterByteArray(bytes:Seq[Byte]) {
+    def encodeHex = Hex.encodeBytes(bytes)
+    def encodeBase64 = Base64.encodeBytes(bytes.toArray)
+  }
+  
+  implicit def ByteArrayToBetterByteArray(bytes:Array[Byte]) = new BetterByteArray(bytes)
+  
+  implicit def StringToBetterString(string:String) = new BetterString(string)
+   
   // BetterBigInt allows scalar multiplication with point, so we can write
   // i * P, where i is a BigInt and P is a Point.
   // Although BigInt does not have * operation with a point, BetterBigInt does and the implicits
@@ -57,7 +75,14 @@ object Util {
       val h = i.toString(16)
       if (h.size % 2 == 1) "0"+h else h
     }
-    def toBytes = Hex.decode(toHex)
+    def toHex(numBytes:Int):String = {
+      val numHex = numBytes * 2
+      val hex = toHex
+      if (hex.size > numHex) throw new Exception("Error converting $i to hex with $numBytes bytes. Requires ${hex.size/2} bytes")
+      val prefix = (1 to (numHex - hex.size) map{i => "0"} mkString)
+      prefix ++ hex
+    }
+    def toBytes = toHex.decodeHex
   }
 
   // below automatically converts BigInt to BetterBigInt when needed
@@ -65,10 +90,6 @@ object Util {
   
   // below automatically converts BetterBigInt to BigInt when needed
   implicit def intToBetterBigInt(i:Int) = new BetterBigInt(i)
-  
-  // below automatically converts string to bytes, assuming string is hex encoded
-  // Use with care as it may cause other strings to be converted to bytes
-  private [sh] implicit def hexToBytes(hex:String) = Hex.decode(hex)
   
   // below neded for deterministic k value generation
   private def getHMAC(secretKey:Array[Byte]) = {
@@ -84,6 +105,9 @@ object Util {
   def HMAC(secretKey:Array[Byte])(message:Array[Byte]) = getHMAC(secretKey).doFinal(message)
   
   def sha256Bytes2Bytes(b:Array[Byte]):Array[Byte] = MessageDigest.getInstance("SHA-256").digest(b)
+
+  def dsha256(bytes:Seq[Byte]) = sha256Bytes2Bytes(sha256Bytes2Bytes(bytes.toArray))
+  
   
   // Needed for RFC6979 (start)
   // https://tools.ietf.org/html/rfc6979#section-3.3
@@ -106,7 +130,7 @@ object Util {
   def bitsToOctets(bits:Seq[Boolean]) = intToOctets(bitsToInt(bits) mod n)
 
   def getBits(bytes:Array[Byte]) = {
-    val hex = Hex.encodeBytes(bytes)
+    val hex = bytes.encodeHex
     val bits = BigInt(hex, 16).toString(2)
     (Array.fill(bytes.size * 8 - bits.size)('0') ++ bits).map{
       case '1' => true
@@ -114,4 +138,108 @@ object Util {
     }
   }    
   // Needed for RFC6979 (end)
+  
+  def encodeDERSig(r:BigInt, s:BigInt) = {
+    val rBytes = r.toByteArray 
+    val rLen = rBytes.size 
+    val sBytes = s.toByteArray 
+    val sLen = sBytes.size 
+    val tLen = 2 + rLen + 2 + sLen
+    Array(0x30.toByte, tLen.toByte, 0x02.toByte, rLen.toByte) ++ rBytes ++
+    Array(0x02.toByte, sLen.toByte) ++ sBytes 
+  }
+
+  def decodeDERSig(signature:String) = {
+    val sig = signature.decodeHex
+    if (sig(0) != 0x30.toByte) throw new Exception(s"Invalid signature: First byte must be ${0x30}. Found ${sig(0)}")    
+    val tLen = sig(1).intValue + 2
+    if (sig.size != tLen) throw new Exception(s"Expected $tLen bytes in signature. Found ${sig.size} bytes.")
+    if (sig(2) != 0x02.toByte) throw new Exception(s"Invalid signature: Third byte must be ${0x02}. Found ${sig(2)}")    
+    val rLen = sig(3).intValue
+    val r = BigInt(sig.drop(4).take(rLen))
+    val right = sig.drop(4+rLen)
+    if (right(0) != 0x02.toByte) throw new Exception(s"Invalid signature: ${4+rLen}-th byte must be ${0x02}. Found ${right(0)}")    
+    val sLen = right(1).intValue
+    if (right.drop(2).size != sLen) throw new Exception(s"Invalid signature: extra bytes after s encoding: ${(right.drop(2+sLen)).encodeHex}")    
+    val s = BigInt(right.drop(2)) // IMPORTANT: Use Java Bytes to BigInt conversion, not as hex
+    (r, s)
+  }
+
+  // check that point satisfies y^2 = x^3 + 7 (mod p)
+  def isCurvePoint(x:BigInt, y:BigInt) = ((((y * y) mod p) - 7 - (x modPow (3, p))) mod p) == 0
+  
+  // key recovery http://www.secg.org/sec1-v2.pdf
+  // https://crypto.stackexchange.com/a/18106/81
+  def recoverPubKeys(r:BigInt, s:BigInt, hash:Array[Byte]):Seq[Option[Point]] = {
+    if (hash.size != 32) throw new Exception(s"Hash must be 32 bytes. Currently ${hash.size} bytes")
+    val h = BigInt(hash.encodeHex, 16)
+    val rInv = r.modInverse(n)
+    (0 to 1).flatMap{j =>
+      val x = r + j * n
+      if (x >= p) Seq(None, None) else {
+        val (y, _) = findYs(x)  
+        if (!(isCurvePoint(x, y))) Seq(None, None) else {
+          val R = Point(x, y)
+          try {
+            n * R   // if nR is point at infinity, this will throw an exception
+            Seq(None, None) // if here then no exception. nR is not Pt at Infinity
+          } catch {
+              case PointAtInfinityException => // valid R
+                val pt1 = s * R - h * G
+                val pt2 = s * (-R) - h * G
+                // https://gist.github.com/scalahub/c5801a939f042d092b82f87f2e2ff1db
+                // https://gist.github.com/scalahub/cf5af5a9291a07a0331798287a9ad0d9
+                Seq(Some(rInv * pt1), Some(rInv * pt2))    // in first, R's y value is even, and in second its odd
+          }
+        }
+      }
+    }
+  }
+
+  def encodeRecoverySigForIndex(byteIndex:Int, r:BigInt, s:BigInt) = {
+    assert(byteIndex >= 0)
+    assert(byteIndex < 8)
+    val rBytes = r.toBytes
+    val sBytes = s.toBytes
+    Array(recoveryEncoding(byteIndex)) ++ 
+    Array.fill(32- rBytes.size)(0x00.toByte) ++ rBytes ++ 
+    Array.fill(32- sBytes.size)(0x00.toByte) ++ sBytes 
+  }
+  
+  def decodeRecoverySig(bytes:Array[Byte]) = {
+    if (bytes.size != 65) throw new Exception(s"Recoverable signature must be 65 bytes. Currently ${bytes.size} bytes")
+    val recid = bytes(0)
+    val r = BigInt(bytes.drop(1).take(32).encodeHex, 16)
+    val s = BigInt(bytes.drop(33).take(32).encodeHex, 16)
+    val byteIndex = recoveryEncoding.indexOf(recid)
+    if (byteIndex < 0) throw new Exception("Invalid recovery byte "+recid.toHexString)
+    (byteIndex, r, s)
+  }
+  
+  def recoverPubKey(recoverySig:Array[Byte], hash:Array[Byte]) = {
+    val (byteIndex, r, s) = decodeRecoverySig(recoverySig)
+    val actualIndex = byteIndex % 4 // mod 4 (max 4 distinct keys can be recovered)
+    recoverPubKeys(r, s, hash).zipWithIndex.collect{
+      case (Some(x), `actualIndex`) =>  // i will be between 0 and 3 // it does not care compressed or uncompressed
+        x.setCompressed(byteIndex >= 4)
+    }.head
+  }
+  
+  val recoveryEncoding = Array[Byte](0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22)
+  
+  val magicBytes =  "Bitcoin Signed Message:\n".getBytes
+  
+  /* https://gist.github.com/scalahub/c5801a939f042d092b82f87f2e2ff1db
+`recid`'s encoding might be one of the following:
+
+```
+0x1B ->  R_y even | R_x < n | P uncompressed
+0x1C ->  R_y odd  | R_x < n | P uncompressed
+0x1D ->  R_y even | R_x > n | P uncompressed
+0x1E ->  R_y odd  | R_x > n | P uncompressed
+0x1F ->  R_y even | R_x < n | P compressed
+0x20 ->  R_y odd  | R_x < n | P compressed
+0x21 ->  R_y even | R_x > n | P compressed
+0x22 ->  R_y odd  | R_x > n | P compressed
+```   */
 }

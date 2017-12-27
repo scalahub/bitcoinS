@@ -2,6 +2,7 @@
 package sh.ecc
 
 import sh.btc._
+import sh.ecc.Util._
 import sh.btc.BitcoinUtil._
 import sh.btc.DataStructures._
 

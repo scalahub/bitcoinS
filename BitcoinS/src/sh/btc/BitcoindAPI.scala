@@ -5,6 +5,7 @@ import sh.util._
 import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.util.concurrent.atomic.AtomicLong
+import sh.ecc.Util._
 
 // Basic API for talking to bitcoind, if needed, say to scan blockchain or broadcast tx
 class BitcoindAPI(rpcuser:String, rpcpassword:String, rpcHost:String) {
@@ -186,7 +187,7 @@ object Parser {
     val (vIns, vWits) = (txXML \ "vin").map{vIn =>       
       if ((vIn \ "txid").nonEmpty) {
         val wits = (vIn \ "txinwitness").map{w =>
-          Hex.decode(w.text).toSeq
+          w.text.decodeHex.toSeq
         }
         Some((In((vIn \ "txid").text, ((vIn \ "vout").text).toInt), Wit(wits)))        
       } else None

@@ -2,7 +2,7 @@
 package sh.ecc
 
 import Util._
-import sh.util.Hex
+//import sh.util._
 import sh.btc.BitcoinUtil._
 
 
@@ -14,14 +14,14 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
 
   pubKey.isCompressed = compressed // set compressed info for pub key
   
-  protected lazy val keyHex = key.toHex
-  protected lazy val keyBytes = key.toBytes 
+  protected [sh] lazy val hex = key.toHex(32)
+  protected [sh] lazy val bytes = hex.decodeHex 
   
   //val pubKeyHex = pubKey.pubKeyHex 
 
   @deprecated("Should not be exposed", "22 Dec 2017")
   def getWIF:String = getBase58FromBytes( // from BitcoinUtil
-    (if (isMainNet) "80" else "ef")+keyHex + (if (compressed) "01" else "")
+    ((if (isMainNet) "80" else "ef")+hex + (if (compressed) "01" else "")).decodeHex
   )
   
   val sigHashAllBytes = getFixedIntBytes(0x01, 4)  // 1 implies SIGHASH_ALL // https://en.bitcoin.it/wiki/OP_CHECKSIG
@@ -70,30 +70,39 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
     example: 
     3046022100E755B8C887AF3C97822875908B1BD4566ECAC5BEE9A2BF736C19A4E4BE74F5F8022100A18B52AE9FBE0DE525F6FA58B68D5AC74308886AAC1AA0AB4A7EC55087C85C0C
   */
-  private def encodeSigDER(r:BigInt, s:BigInt) = {
-    val rBytes = r.toByteArray 
-    val rLen = rBytes.size 
-    val sBytes = s.toByteArray 
-    val sLen = sBytes.size 
-    val tLen = 2 + rLen + 2 + sLen
-    Array(0x30.toByte, tLen.toByte, 0x02.toByte, rLen.toByte) ++ rBytes ++
-    Array(0x02.toByte, sLen.toByte) ++ sBytes 
-  }
-  def sign(msg:String):String = Hex.encodeBytes(signHash(sha256Bytes2Bytes(msg.getBytes)))
-
-  protected def signHash(hash:Array[Byte]) = {
+  protected def signHashGetRS(hash:Array[Byte]) = {
     if (hash.size != 32) throw new Exception("Hash must be 32 bytes")
     val (k, r) = getDeterministicKRFromHash(hash)
-    val h = BigInt(Hex.encodeBytes(hash), 16) mod n
+    val h = BigInt(hash.encodeHex, 16) mod n
     val s = ((h + key * r) * (k.modInverse(n))) mod n    
     /*  https://github.com/bitcoin/bips/blob/master/bip-0062.mediawiki#Low_S_values_in_signatures
         Low S values in signatures:
         The value S in signatures must be between 
         0x1 and 0x7FFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF 5D576E73 57A4501D DFE92F46 681B20A0 (inclusive). 
         If S is too high, simply replace it by S' = 0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE BAAEDCE6 AF48A03B BFD25E8C D0364141 - S. */    
-    encodeSigDER(r, if (s > sMax) n - s else s)
+    (r, if (s > sMax) n - s else s)
   }
+  protected def signHash(hash:Array[Byte]) = {
+    val (r, s) = signHashGetRS(hash)
+    encodeDERSig(r, s)
+  }
+  private def signHashKeyRecovery(hash:Array[Byte]) = {
+    // https://github.com/nanotube/supybot-bitcoin-marketmonitor/blob/master/GPG/local/bitcoinsig.py
+    if (hash.size != 32) throw new Exception(s"Invalid hash. Must be 32 bytes. Currently ${hash.size} bytes.")
+    val (r, s) = signHashGetRS(hash)
+    pubKey.encodeRecoverySig(r, s, hash)
+  }
+  // used key recovery
+  def signMessageBitcoinD(message:String) = 
+    signHashKeyRecovery(dsha256(getMessageToSignBitcoinD(message))).encodeBase64
   
-  override def toString = "PrvKey [Hidden] with publicKey: "+pubKey.pubKeyHex
+  override def toString = "PrvKey [Hidden] with publicKey: "+pubKey.hex
+   
+  // following are dangerous. Use signMessageBitcoinD
+  @deprecated("Do not use in production. Only for testing!", "27 Dec 2017")
+  def sign(msg:String):String = (signHash(sha256Bytes2Bytes(msg.getBytes))).encodeHex
   
+  @deprecated("Do not use in production. Only for testing!", "27 Dec 2017")
+  def signMessageKeyRecovery(msg:String) = signHashKeyRecovery(dsha256(msg.getBytes)).encodeHex
 }
+
