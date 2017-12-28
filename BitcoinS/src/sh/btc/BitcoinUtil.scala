@@ -1,7 +1,6 @@
 package sh.btc
 
 import sh.util.Base58Check
-//import sh.util.Hex
 import BitcoinUtil._
 import sh.btc.DataStructures._
 import sh.ecc.Util._
@@ -21,8 +20,8 @@ object BitcoinUtil {
   // address prefixes  /* https://en.bitcoin.it/wiki/List_of_address_prefixes  */
   val P2PKH  = 0x00.toByte
   val P2SH   = 0x05.toByte
-  val T_P2PKH = 0x6F.toByte
-  val T_P2SH = 0xC4.toByte
+  val T_P2PKH = 0x6F.toByte   // testnet
+  val T_P2SH = 0xC4.toByte    // testnet
   
   type Amount = BigInt  
   type Address = String
@@ -62,7 +61,6 @@ object BitcoinUtil {
     BigInt(bytes.reverse.encodeHex, 16)
   }
   
-  // below method to rename, its not really hash, but rather hexEncodedFromLittleEndian
   def getHexFromLittleEndian(bytes:Array[Byte]) = bytes.reverse.encodeHex
   
   def getBase58FromBytes(addrBytes:Array[Byte]) = 

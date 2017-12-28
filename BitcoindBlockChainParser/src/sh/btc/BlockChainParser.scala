@@ -70,9 +70,10 @@ trait BlockChainParser {
           currBlockByte = -1
           endBlockByte = -1
           if (isInterestingBlock && validMagicBytes) {
-            val blockParser = new BlockParser(blockBytes.toArray)
-            blockParser.txs.foreach{tx =>
+            new BlockParser(blockBytes.toArray).txs.foreach{tx =>
               //if (debug) tx.printTx
+              if (debug) println("Tx  "+tx.txid)
+              
               val hash = tx.txid
               tx.outs.zipWithIndex.map{case (out, i) =>
                 out.optAddress.map{address =>
@@ -81,6 +82,18 @@ trait BlockChainParser {
               }
               tx.ins.foreach(in => if (in.vOut >= 0) validUTXO -= in)
             }
+            //  // use below code block to parse segwit tx (commented as not needed now)
+            //  new BlockParser(blockBytes.toArray).segWitTxs.foreach{tx =>
+            //    if (debug) println("Tx  "+tx.txid)
+            //    if (debug) println("sTx "+tx.segWitTxHash)
+            //    val hash = tx.txid
+            //    tx.outs.zipWithIndex.map{case (out, i) =>
+            //      out.optAddress.map{address =>
+            //        if (watchAddress.contains(address)) validUTXO += new In(hash, i) -> ((address, out.value))
+            //      }
+            //    }
+            //    tx.ins.foreach(in => if (in.vOut >= 0) validUTXO -= in)
+            //  }
           }
           optHeader = None
           blockBytes.clear
