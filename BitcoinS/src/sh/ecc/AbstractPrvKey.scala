@@ -92,13 +92,13 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
     val (r, s) = signHashGetRS(hash)
     pubKey.encodeRecoverySig(r, s, hash)
   }
-  // used key recovery
+  // uses key recovery
   def signMessageBitcoinD(message:String) = 
     signHashKeyRecovery(dsha256(getMessageToSignBitcoinD(message))).encodeBase64
   
   override def toString = "PrvKey [Hidden] with publicKey: "+pubKey.hex
    
-  // following are dangerous. Use signMessageBitcoinD
+  // following are dangerous. Use signMessageBitcoinD. Kept only for testing
   @deprecated("Do not use in production. Only for testing!", "27 Dec 2017")
   def sign(msg:String):String = (signHash(sha256Bytes2Bytes(msg.getBytes))).encodeHex
   

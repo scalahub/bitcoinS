@@ -135,9 +135,10 @@ case class Point(x:BigInt, y:BigInt) {
       scriptPubKey: OP_HASH160 [20-byte-hash of {[pubkey] OP_CHECKSIG} ] OP_EQUAL
     
       Pubkey script: OP_HASH160 <Hash160(redeemScript)> OP_EQUAL
-      Signature script: <sig> [sig] [sig...] <redeemScript>   */
-  // public key will be either 65 (uncompressed) or 33 (compressed)
-  // this size of pubKey is <= 75 and can be represented in one byte (pushdata)
+      Signature script: <sig> [sig] [sig...] <redeemScript>   
+   
+      public key will be either 65 (uncompressed) or 33 (compressed)
+      Thus, size of pubKey is <= 75 and can be represented in one byte (pushdata)  */
   def getRedeemScript_P2SH_P2PK = Seq(bytes.size.toByte)++bytes++Seq(OP_CheckSig)
   
   def getAddress_P2SH_P2PK = { // simple 1 out of 1 P2SH from BIP16
@@ -191,33 +192,30 @@ case class Point(x:BigInt, y:BigInt) {
 
   def encodeRecoverySig(r:BigInt, s:BigInt, hash:Array[Byte]):Array[Byte] = {
     val recovered = recoverPubKeys(r, s, hash).zipWithIndex.collect{
-      case (Some(pk), i) if pk == this => // valid pub key matching this pub key, note the backticks 
-        i
-        // i will be one of 0, 1, 2, 3
-        // (only one will match)
-        // if compressed, we need to add 4 and get corresponding i
-    
-        /*  `recid`'s encoding might be one of the following:
-          0x1B ->  R_y even | R_x < n | P uncompressed
-          0x1C ->  R_y odd  | R_x < n | P uncompressed
-          0x1D ->  R_y even | R_x > n | P uncompressed
-          0x1E ->  R_y odd  | R_x > n | P uncompressed
-          0x1F ->  R_y even | R_x < n | P compressed
-          0x20 ->  R_y odd  | R_x < n | P compressed
-          0x21 ->  R_y even | R_x > n | P compressed
-          0x22 ->  R_y odd  | R_x > n | P compressed    */
+      case (Some(pk), i) if pk == this => i // valid pub key matching this pub key, note the backticks 
+        /*  NOTE: i will be ONE of 0, 1, 2, 3 (i.e., EXACTLY one should match)
+            if compressed, we need to add 4 and get corresponding i. See below table
+            From: https://gist.github.com/scalahub/c5801a939f042d092b82f87f2e2ff1db  
+
+            recid's encoding might be one of the following:
+            0x1B ->  R_y even | R_x < n | P uncompressed
+            0x1C ->  R_y odd  | R_x < n | P uncompressed
+            0x1D ->  R_y even | R_x > n | P uncompressed
+            0x1E ->  R_y odd  | R_x > n | P uncompressed
+            0x1F ->  R_y even | R_x < n | P compressed
+            0x20 ->  R_y odd  | R_x < n | P compressed
+            0x21 ->  R_y even | R_x > n | P compressed
+            0x22 ->  R_y odd  | R_x > n | P compressed    */
     }
-    assert(recovered.size == 1)
+    if (recovered.size != 1) throw new Exception(s"Recovered keys should be exactly 1. Found ${recovered.size}")
     val index = recovered.head    
     val byteIndex = if (isCompressed) index + 4 else index 
     encodeRecoverySigForIndex(byteIndex, r, s)
   }
-  // verify signature on msg (human string, such as "Hello") and signature Base64 encoded
   def verifyMessageBitcoinD(message:String, sig:String) = {
-    val msg = Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
-    val hash = dsha256(msg)
-    val (id, r, s) = decodeRecoverySig(sig.decodeBase64)
-    verify(hash, r, s)
+    // verify signature on msg (human string, such as "Hello") and signature Base64 encoded
+    val (_, r, s) = decodeRecoverySig(sig.decodeBase64) // first param is recid. Ignore it
+    verify(dsha256(getMessageToSignBitcoinD(message)), r, s)
   }
   /* // other verify constructs used for testing but not needed in production. Hence commented out
   def verify(msg:String, signature:String):Boolean = {

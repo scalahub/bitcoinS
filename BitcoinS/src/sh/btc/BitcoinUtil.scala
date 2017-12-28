@@ -187,7 +187,4 @@ Value	Storage length	Format
     versionBytes ++ flagMarkerBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ witBytes ++ lockTimeBytes
   }.toArray
   
-  def getMessageToSignBitcoinD(message:String) = 
-    Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
-  
 }
