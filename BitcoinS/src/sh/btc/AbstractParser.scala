@@ -19,7 +19,12 @@ abstract class AbstractParser(bytes:Array[Byte]) {
   
   protected def getNext32Hash = getHexFromLittleEndian(getNextBytes(32).toArray)
   
-  protected def getNext4Int = getUInt4LittleEndian(getNextBytes(4).toArray)
+  // unsigned
+  protected def getNext4UInt = getUInt4LittleEndian(getNextBytes(4).toArray)
+  
+  // signed
+  @deprecated("Not fully tested", "31 Dec 2017")
+  protected def getNext4SInt = getSInt4LittleEndian(getNextBytes(4).toArray)
   
   protected def getCompactInt = { 
     val ctr = getAndIncrCtr

@@ -174,11 +174,11 @@ object TestKeyRecovery5 {
 }
 
 object TestKeyRecovery6 {
-  println("Test 6: [check that recover pubKey returns EXCACTLY one public key]")
+  println("Test 6: [check that recover pubKey returns EXACTLY one public key]")
   isMainNet = true
   
   val msg = "ABCD"
-  1 to 10 foreach {i =>
+  1 to 20 foreach {i =>
     Seq(true, false).map{compr =>
       val key = new PrvKey(i, compr)
       val address = key.pubKey.getAddress
@@ -207,7 +207,7 @@ object TestKeyRecovery7 {
   isMainNet = true
   
   val message = "ABCD"
-  1 to 10 foreach {i =>
+  1 to 20 foreach {i =>
     Seq(true, false).map{compr =>
       val key = new PrvKey(n - i, compr)
       val sig = key.signMessageBitcoinD(message)

@@ -11,7 +11,7 @@ import sh.util.FileUtil._
 trait BlockChainParser {
   val watchAddress:Set[Address] // addresses for which we need to scan blockchain
   println(s"Loaded ${watchAddress.size} address to watch")
-  var validUTXO = Map[In, (Address, Amount)]()
+  var validUTXO = Map[TxIn, (Address, Amount)]()
   def parseFiles(files:Array[String], startTimeStamp:Long) = {
     files.foreach{file  =>
       System.gc
@@ -77,7 +77,7 @@ trait BlockChainParser {
               val hash = tx.txid
               tx.outs.zipWithIndex.map{case (out, i) =>
                 out.optAddress.map{address =>
-                  if (watchAddress.contains(address)) validUTXO += new In(hash, i) -> ((address, out.value))
+                  if (watchAddress.contains(address)) validUTXO += new TxIn(hash, i) -> ((address, out.value))
                 }
               }
               tx.ins.foreach(in => if (in.vOut >= 0) validUTXO -= in)

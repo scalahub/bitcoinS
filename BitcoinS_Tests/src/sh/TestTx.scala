@@ -22,17 +22,17 @@ object TestSegWit extends App {
   assert(key.pubKey.getAddress == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1")
   
   // Send some coins to the above addresses. During testing, the following coins were used:
-  val in0 = In("0224c8875a43c482c81a508fafc10bd0f084b27b5543c228e48431985f321547", 0) // p2pkh
-  val in1 = In("63bec90405a0c173ae928860a1e1d403e507ec225e2cdd07717c8408820d418b", 0) // segwit // 2031250 satoshis
-  val in2 = In("db5a23f0da2502b8ef82d93453aa3be0b6e9a3ecfbfbc00818dc32b3c712d2d0", 0) // p2pkh
-  val in3 = In("6d73e3c8f66869859dc5c1ba73f252b8db51950ebc1fc4a59dca3552a0085f9a", 0) // p2sh
-  val in4 = In("6ce466eb0920f84cc2cfde1d359176c0baab7dc442e4e5763bf67e8fa96ee6a4", 0) // p2sh
-  val in5 = In("b49f3d6d15f2bdd9217ba3caaf1bb1f2d9875c9657e6b0ac7a0ef841d486ad1d", 2) // p2pkh
-  val in6 = In("b75dfb27477834b3060c8e956273bef81c62689a8b9ebb7cd4a8119508c2c798", 0) // segwit // 1015625 satoshis
+  val in0 = TxIn("0224c8875a43c482c81a508fafc10bd0f084b27b5543c228e48431985f321547", 0) // p2pkh
+  val in1 = TxIn("63bec90405a0c173ae928860a1e1d403e507ec225e2cdd07717c8408820d418b", 0) // segwit // 2031250 satoshis
+  val in2 = TxIn("db5a23f0da2502b8ef82d93453aa3be0b6e9a3ecfbfbc00818dc32b3c712d2d0", 0) // p2pkh
+  val in3 = TxIn("6d73e3c8f66869859dc5c1ba73f252b8db51950ebc1fc4a59dca3552a0085f9a", 0) // p2sh
+  val in4 = TxIn("6ce466eb0920f84cc2cfde1d359176c0baab7dc442e4e5763bf67e8fa96ee6a4", 0) // p2sh
+  val in5 = TxIn("b49f3d6d15f2bdd9217ba3caaf1bb1f2d9875c9657e6b0ac7a0ef841d486ad1d", 2) // p2pkh
+  val in6 = TxIn("b75dfb27477834b3060c8e956273bef81c62689a8b9ebb7cd4a8119508c2c798", 0) // segwit // 1015625 satoshis
 
   // the following output was used to test
   // Note 2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF faucet address
-  val out1 = Out(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"), 32206092) // total amount is slightly more than 32206092
+  val out1 = TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"), 32206092) // total amount is slightly more than 32206092
   
   
   val tx0 = createSegWitTxRaw(Seq(in0,in1,in2,in3,in4,in5,in6), Seq(out1)) // unsigned tx
@@ -67,12 +67,12 @@ object TestP2PKH extends App {
   println("P2PKH address "+key.pubKey.getAddress) // muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1 
   assert(key.pubKey.getAddress == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1")
   // following inputs were used in creating tx (funds were sent to above muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1)
-  val in1 = In("56585700f02e26d8d1f71634edbdab74b4eba06abbf55bb918352ed7d4942e0d", 0)
-  val in2 = In("5ef0bea6abe1203f8521f61e2040024c39f48f7253df9ee3b919a8513bb01c36", 0)
+  val in1 = TxIn("56585700f02e26d8d1f71634edbdab74b4eba06abbf55bb918352ed7d4942e0d", 0)
+  val in2 = TxIn("5ef0bea6abe1203f8521f61e2040024c39f48f7253df9ee3b919a8513bb01c36", 0)
 
   // the following output was used to test
   // Note 2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF faucet address
-  val out1 = Out(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  48700000)
+  val out1 = TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  48700000)
   val tx = BitcoinUtil.createNonSegWitTxRaw(Seq(in1, in2), Seq(out1))
   val signed = key.signTx_P2PKH(tx, Seq(0, 1)) // inputs 0 and 1 are P2PKH inputs
   val parsed = new TxParser(signed).getTx
@@ -91,13 +91,13 @@ object TestP2SH_P2PK extends App {
   assert(key.pubKey.getAddress == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1")
   
   // following inputs were used to create tx
-  val in2 = In("d9524c287a4f6d6f072244faab539f1ed8541b557bd904a3f56f51f371786a0f", 0) // 0.34000000 // 2MwprvB9tUMtX4vK8zJK8K329fNu79CJgR7
-  val in3 = In("a1ba359c11255e366e1a0adf6a3d8fd148960468114913779c1420919d382591", 0) // 1.3 // muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1
-  val in4 = In("5e5628b2f631955a425deae64da883d36b003ce75e668b7e5b12988e6dca55f4", 0) // 0.08125000 // muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1
+  val in2 = TxIn("d9524c287a4f6d6f072244faab539f1ed8541b557bd904a3f56f51f371786a0f", 0) // 0.34000000 // 2MwprvB9tUMtX4vK8zJK8K329fNu79CJgR7
+  val in3 = TxIn("a1ba359c11255e366e1a0adf6a3d8fd148960468114913779c1420919d382591", 0) // 1.3 // muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1
+  val in4 = TxIn("5e5628b2f631955a425deae64da883d36b003ce75e668b7e5b12988e6dca55f4", 0) // 0.08125000 // muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1
 
   // the following output was used to test
   // Note 2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF faucet address
-  val out2 = Out(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  172000000)
+  val out2 = TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  172000000)
   val tx = BitcoinUtil.createNonSegWitTxRaw(Seq(in2, in3, in4), Seq(out2))
   val tx1 = key.signTx_P2SH_P2PK(tx, Seq(0))
   val tx2 = key.signTx_P2PKH(tx1, Seq(1, 2))

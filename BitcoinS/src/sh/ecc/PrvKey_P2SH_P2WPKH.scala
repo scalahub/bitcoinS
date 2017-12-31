@@ -14,17 +14,17 @@ abstract class PrvKey_P2SH_P2WPKH(key:BigInt, compressed:Boolean) extends PrvKey
     whichInputs.map{
       case (i, value) => 
         val currIn = tx.ins(i) 
-        val nVer = getFixedIntBytes(tx.version, 4)
+        val nVer = getFixedIntBytes(tx.version, 4) // signed As per rules
         val hashPrevOuts = dsha256(
           tx.ins.flatMap(in =>
-            in.txHash.decodeHex.reverse ++ getFixedIntBytes(in.vOut, 4)
+            in.txHash.decodeHex.reverse ++ getFixedIntBytes(in.vOut, 4) // vOut is signed
           )
         )
-        val hashSeq = dsha256(tx.ins.flatMap(in => getFixedIntBytes(in.seqNum, 4)))
+        val hashSeq = dsha256(tx.ins.flatMap(in => getFixedIntBytes(in.seqNum, 4))) // unsigned
         val outPoint = currIn.txHash.decodeHex.reverse ++ getFixedIntBytes(BigInt(currIn.vOut), 4)                
         val scriptCode = "1976a914".decodeHex ++ doubleHashedPubKeyBytes ++ "88ac".decodeHex
-        val amt = getFixedIntBytes(value, 8)
-        val nSeq = getFixedIntBytes(currIn.seqNum, 4)
+        val amt = getFixedIntBytes(value, 8) // unsigned
+        val nSeq = getFixedIntBytes(currIn.seqNum, 4) // unsigned
         val hashOuts = dsha256(
           tx.outs.flatMap(out =>
             getFixedIntBytes(out.value, 8) ++ out.optScriptPubKey.map(scriptPubKey =>
@@ -37,12 +37,12 @@ abstract class PrvKey_P2SH_P2WPKH(key:BigInt, compressed:Boolean) extends PrvKey
         val bytesToSign = nVer ++ hashPrevOuts ++ hashSeq ++ outPoint ++ scriptCode ++ amt ++ nSeq ++ hashOuts ++ nLockTime ++ nHashType
         val hash = dsha256(bytesToSign)
         val sign = signHash(hash) ++ Array(0x01.toByte) // append a 0x01 to indicate SIGHASH_ALL
-        tx.witnesses(i) = Wit(Seq(sign, pubKey.bytes))
+        tx.witnesses(i) = TxWit(Seq(sign, pubKey.bytes))
         // finally set the scriptSig for input script (scriptSig is always a push of redeemScript)
         val redeemScript = getRedeemScript_P2WPKH
         val scriptSig = redeemScript.size.toByte +: redeemScript
         tx.ins(i).setScriptSig(scriptSig)
     }
-    createSegWitTxRaw(tx.ins zip tx.witnesses, tx.outs, tx.lockTime)
+    createSegWitTxRawAdvanced(tx.version, tx.ins zip tx.witnesses, tx.outs, tx.lockTime)
   }
 }

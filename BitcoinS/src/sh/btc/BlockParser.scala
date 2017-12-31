@@ -3,17 +3,18 @@ package sh.btc
 import BitcoinUtil._
 import java.util.concurrent.atomic.AtomicBoolean
 import sh.btc.DataStructures._
+import sh.ecc.Util._
 
 class BlockParser(bytes:Array[Byte]) extends TxParserSegWit (bytes) { 
   // Header is the first 80 bytes, which has following data:
-  val version = getNext4Int
+  val version = getNext4SInt // signed
   val prevBlockHash = getNext32Hash
   val merkleRootHash = getNext32Hash  
-  val time = getNext4Int
-  val nBits = getNext4Int
-  val nonce = getNext4Int
-  lazy val currBlockHash = getHashed(getBytes(0, 79)) 
-  
+  val time = getNext4UInt // unsigned
+  val nBits = getNextBytes(4)
+  val nonce = getNext4UInt // unsigned
+  val currBlockHash = getHashed(getBytes(0, 79)) 
+  println("block hash: "+currBlockHash)
   if (debug) {
     println(s"Current block hash: $currBlockHash")
     println(s"Previous block hash: $prevBlockHash")
@@ -35,5 +36,9 @@ class BlockParser(bytes:Array[Byte]) extends TxParserSegWit (bytes) {
   private def getSegWitTxs:Seq[TxSegWit] = {
     if (isParsed.compareAndSet(false, true)) 1 to getCompactInt map (_ => getSegWitTx) // first getCompactInt returns numTx
     else throw new Exception("Block already parsed.")  
-  }  
+  }
+  //merkleRoot:String, nBits:Long, nonce:Long
+  lazy val getBlock = BitcoindBlock(
+    currBlockHash, prevBlockHash, time, version, segWitTxs, segWitTxs.map(_.serialize.encodeHex), merkleRootHash, nBits, nonce
+  )
 }

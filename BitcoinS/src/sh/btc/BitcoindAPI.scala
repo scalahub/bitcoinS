@@ -106,9 +106,12 @@ s"""
     )
     val prevBlkHash =  (xml \\ "previousblockhash").text
     val version =  (xml \\ "version").text.toLong
+    val merkleRoot =  (xml \\ "merkleroot").text
+    val nBits = (xml \\ "bits").text.decodeHex
+    val nonce = (xml \\ "nonce").text.toLong
     val time = (xml \\ "time").text.toLong * 1000
     val (txs, hexTxs) = (xml \\ "result" \\ "tx").map(Parser.parseTxXML).unzip
-    BitcoindBlock(blockHash, prevBlkHash, time, version, txs, hexTxs)
+    BitcoindBlock(blockHash, prevBlkHash, time, version, txs, hexTxs, merkleRoot, nBits, nonce)
   }
   
   def getBestBlockHash = {
@@ -128,17 +131,14 @@ s"""
     addresses
   }
   
-  def createRawTransaction(
-    inputs:Array[In], 
-    dests:Array[Out]
-  ) = {
-    val ins = inputs.map{
-      case In(txHash, vOut) =>
+  def createRawTransaction(ins:Array[TxIn], outs:Array[TxOut]) = {
+    val in = ins.map{
+      case TxIn(txHash, vOut) =>
         s"""{\"txid\":\"$txHash\",\"vout\":$vOut}"""
     }.reduceLeft(_+","+_)
     
-    val outs = dests.map{
-      case Out(Some(addr), amtBigInt) =>
+    val out = outs.map{
+      case TxOut(Some(addr), amtBigInt) =>
         val amtBtc = BitcoinUtil.insertDecimal(amtBigInt)
         s"""\"$addr\":$amtBtc"""
     }.reduceLeft(_+","+_)
@@ -147,7 +147,7 @@ s"""
 {
   "method": "createrawtransaction", 
   "params": [
-     [$ins], {$outs}
+     [$in], {$out}
   ],
   "id":$id,
 "jsonrpc":"1.0"}"""
@@ -181,7 +181,7 @@ object Parser {
           Some(address)
         } else None
       } else None
-      Out(optAddress, value)
+      TxOut(optAddress, value)
     }
     
     val (vIns, vWits) = (txXML \ "vin").map{vIn =>       
@@ -189,7 +189,7 @@ object Parser {
         val wits = (vIn \ "txinwitness").map{w =>
           w.text.decodeHex.toSeq
         }
-        Some((In((vIn \ "txid").text, ((vIn \ "vout").text).toInt), Wit(wits)))        
+        Some((TxIn((vIn \ "txid").text, ((vIn \ "vout").text).toInt), TxWit(wits)))        
       } else None
     }.collect{
       case Some((in, wit)) => (in, wit)

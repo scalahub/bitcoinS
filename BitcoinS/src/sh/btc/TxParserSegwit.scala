@@ -6,7 +6,7 @@ import sh.btc.DataStructures._
 
 class TxParserSegWit(bytes:Array[Byte]) extends TxParser(bytes) {
   def getSegWitTx = {
-    val (version, versionBytes) = usingBytes(getNext4Int)
+    val (version, versionBytes) = usingBytes(getNext4SInt) // signed
     val isSegWit = bytes(currCtr) == 0.toByte
     val (ins, outs, flagBytes, wits, inBytes, outBytes, witBytes) = if (isSegWit) { 
       // 1st byte after version is 00 in version bytes, its a segwit tx
@@ -19,16 +19,17 @@ class TxParserSegWit(bytes:Array[Byte]) extends TxParser(bytes) {
     } else { // non-segwit tx
       val (ins, inBytes) = usingBytes(getTxIns)
       val (outs, outBytes) = usingBytes(getTxOuts)
-      (ins, outs, Nil, ins.map(in => Wit(Nil)), inBytes, outBytes, Nil)
+      (ins, outs, Nil, ins.map(in => TxWit(Nil)), inBytes, outBytes, Nil)
     }
-    val (lockTime, lockTimeBytes) = usingBytes(getNext4Int)
+    val (lockTime, lockTimeBytes) = usingBytes(getNext4UInt) // unsigned
     val classicRaw = versionBytes ++ inBytes ++ outBytes ++ lockTimeBytes
-    val size = classicRaw.size
+    val classicSize = classicRaw.size
     val txId = getHashed(classicRaw)
-    val (segWitTxHash, vSize) = if (isSegWit) {
+    val (segWitTxHash, vSize, segWitRaw) = if (isSegWit) {
       val segWitRaw = versionBytes ++ flagBytes ++ inBytes ++ outBytes ++ witBytes ++ lockTimeBytes
-      (getHashed(segWitRaw), math.ceil((3 * size + segWitRaw.size)/4d).toInt)
-    } else (txId, size)
+      (getHashed(segWitRaw), math.ceil((3 * classicSize + segWitRaw.size)/4d).toInt, segWitRaw)
+    } else (txId, classicSize, classicRaw)
+    val size = segWitRaw.size
     TxSegWit(version, ins, outs, wits.toArray, lockTime, txId, isSegWit, segWitTxHash, size, vSize)
   }
 

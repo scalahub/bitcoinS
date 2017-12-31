@@ -84,7 +84,7 @@ The following is an unsigned transaction: 0100000001db6b1b20aa0fd7b23880be2ecbd4
   
   val prevTxHash = "db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477".decodeHex.reverse.encodeHex
   val prevVOut = getUInt4LittleEndian("01000000".decodeHex).toInt
-  val in = In(prevTxHash, prevVOut).setSeqNum(BigInt("feffffff", 16).toLong)
+  val in = TxIn(prevTxHash, prevVOut).setSeqNum(BigInt("feffffff", 16).toLong)
   require(prevVOut == 1)
   require(in == tx.ins(0))
   val outAddr1 = getAddrFromOutScript("76a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac".decodeHex)
@@ -93,8 +93,8 @@ The following is an unsigned transaction: 0100000001db6b1b20aa0fd7b23880be2ecbd4
   val amt1 = getUInt8LittleEndian("b8b4eb0b00000000".decodeHex)
   val amt2 = getUInt8LittleEndian("0008af2f00000000".decodeHex)
   
-  val out1 = Out(outAddr1, amt1)
-  val out2 = Out(outAddr2, amt2)
+  val out1 = TxOut(outAddr1, amt1)
+  val out2 = TxOut(outAddr2, amt2)
   require(out1 == tx.outs(0))
   require(out2 == tx.outs(1))
   // below assumes that the sample uses deterministic k generation used in RFC6969 (which it does!)

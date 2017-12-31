@@ -25,13 +25,13 @@ object TestBitcoindAPI extends App {
   b.getBlock(b.getBestBlockHash).txs foreach println
   val hex = b.createRawTransaction(
     Array(
-      In("2550fd204745361fd828042423bcde2be000926bd2d4db901749b85f1592e24f", 0), 
-      In("b2b7217210316e680ecd5ebbe38b6debfc1e2486f6f9a1cca6bdfe34ff32b274", 1),
-      In("4792d9c13c37dc08dc05953ebf5533480927b961bcca59421a8f863aedb1e719", 2)
+      TxIn("2550fd204745361fd828042423bcde2be000926bd2d4db901749b85f1592e24f", 0), 
+      TxIn("b2b7217210316e680ecd5ebbe38b6debfc1e2486f6f9a1cca6bdfe34ff32b274", 1),
+      TxIn("4792d9c13c37dc08dc05953ebf5533480927b961bcca59421a8f863aedb1e719", 2)
     ), 
     Array(
-      Out(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"), 100000),
-      Out(Some("tmGL4Hjcc8J1rkikD7jQqRvQvrpKtq7GbJW"), 200000)
+      TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"), 100000),
+      TxOut(Some("tmGL4Hjcc8J1rkikD7jQqRvQvrpKtq7GbJW"), 200000)
     )
   )
   println("hex "+hex)
