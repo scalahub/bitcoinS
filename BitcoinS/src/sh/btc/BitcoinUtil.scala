@@ -31,12 +31,12 @@ object BitcoinUtil {
   val T_P2PKH = 0x6f.toByte   // testnet
   val T_P2SH = 0xc4.toByte    // testnet
   
-  val DATA = 0xc8.toByte // = 200 decimal. Custom (created for storing data. Not a standard!)
-  val T_DATA = 0xcd.toByte // = 205 decimal. Custom (created for storing data. Not a standard!) TESTNET
+  //  val DATA = 0xc8.toByte // = 200 decimal. Custom (created for storing data. Not a standard!)
+  //  val T_DATA = 0xcd.toByte // = 205 decimal. Custom (created for storing data. Not a standard!) TESTNET
   // NOTE: Do we need separate TESTNET code for DATA (above) and UNKNOWN (below) ?
   
-  val UNKNOWN = 0xd8.toByte // = 216 decimal. Custom (created for denoting any other unknown script types. Not a standard!)
-  val T_UNKNOWN = 0xdd.toByte // = 221 decimal. Custom (created for denoting any other unknown script types. Not a standard!) TESTNET  
+  val UNKNOWN = 0x29.toByte // = 41 decimal. Results in starting with r. Custom (created for denoting any other unknown script types. Not a standard!)
+  val T_UNKNOWN = 0xff.toByte // = 255 decimal. Results in starting with 6. Custom (created for denoting any other unknown script types. Not a standard!) TESTNET  
   // address prefixes end
   
   type Amount = BigInt  

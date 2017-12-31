@@ -4,7 +4,7 @@ package sh
 import sh.util.Base58Check
 
 object TestBase58 extends App {
-  val str = "jdjcndwkcnedifjcnefcjmefvckefmklefv,levrfkvmrkjvncnecjencjencejvnej"
+  val str = "9b195c66cea;c7b70f9d5d8a47;b0c1e66e85a010;bf339d914a3a;20aff96be11f9"
   val enc = Base58Check.encodePlain(str.getBytes)
   val dec = new String(Base58Check.decodePlain(enc))
   require(str == dec)
