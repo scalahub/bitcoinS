@@ -147,7 +147,7 @@ case class Point(x:BigInt, y:BigInt) {
     getBase58FromBytes(addrBytes) 
   }
   
-  def getRedeemScript_P2WPKH = "0014".decodeHex ++ doubleHashedPubKeyBytes   // 00147646c030f7e75b80f0a31cdcab731e6f424f22b2
+  def getRedeemScript_P2WPKH = "0014".decodeHex ++ doubleHashedPubKeyBytes   // example 00147646c030f7e75b80f0a31cdcab731e6f424f22b2
   /*  To create a P2SH-P2WPKH address:
 
       Calculate the RIPEMD160 of the SHA256 of a public key (keyhash). 
@@ -192,7 +192,7 @@ case class Point(x:BigInt, y:BigInt) {
 
   def encodeRecoverySig(r:BigInt, s:BigInt, hash:Array[Byte]):Array[Byte] = {
     val recovered = recoverPubKeys(r, s, hash).zipWithIndex.collect{
-      case (Some(pk), i) if pk == this => i // valid pub key matching this pub key, note the backticks 
+      case (Some(pk), i) if pk == this => i // valid pub key matching this pub key 
         /*  NOTE: i will be ONE of 0, 1, 2, 3 (i.e., EXACTLY one should match)
             if compressed, we need to add 4 and get corresponding i. See below table
             From: https://gist.github.com/scalahub/c5801a939f042d092b82f87f2e2ff1db  

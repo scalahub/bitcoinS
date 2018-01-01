@@ -199,6 +199,7 @@ Value	Storage length	Format
   }
   def createNonSegWitTxRaw(ins:Seq[TxIn], outs:Seq[TxOut]) = createNonSegWitTxRawAdvanced(1, ins, outs, 0)
   
+  // advanced = takes more inputs: version and locktime
   def createNonSegWitTxRawAdvanced(version:Long, ins:Seq[TxIn], outs:Seq[TxOut], lockTime:Long) = {
     val inCtrBytes = getVarIntBytes(ins.size)
     val inBytes = ins.flatMap{in =>
@@ -224,10 +225,13 @@ Value	Storage length	Format
     versionBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ lockTimeBytes
   }.toArray
   
+  // wrapper over "Advanced", that uses default version, locktime and sets witnesses to empty 
   def createSegWitTxRaw(ins:Seq[TxIn], outs:Seq[TxOut]):Array[Byte] = createSegWitTxRawAdvanced(1, ins.map((_, TxWit(Nil))), outs, 0)
   
+  // below is another wrapper, commented out because unused
   //def createSegWitTxRaw(insWits:Seq[(In, Wit)], outs:Seq[Out]) = createSegWitTxRawAdvanced(1, insWits:Seq[(In, Wit)], outs:Seq[Out], 0)
   
+  // advanced = takes more inputs: version, witnesses and locktime
   def createSegWitTxRawAdvanced(version:Long, insWits:Seq[(TxIn, TxWit)], outs:Seq[TxOut], lockTime:Long) = {    // inputs also contains amount
     val (ins, wits) = insWits.unzip
     val inBytes = ins.flatMap{in =>

@@ -25,6 +25,7 @@ object DataStructures {
     override def toString = txHash+":"+vOut
   }       
   case class TxOut(optAddress:Option[String], value:BigInt) {
+    def this (address:String, value:BigInt) = this(Some(address), value)
     override def toString = optAddress.getOrElse("None")+":"+value
     lazy val optScriptPubKey = optAddress.map(getScriptPubKeyFromAddress)
   }        
