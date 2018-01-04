@@ -1,6 +1,10 @@
 package sh
 
+import sh.btc.BitcoinS
 import sh.ecc._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
 
 object TestVectorsRFC6979 {
   //Haskoin test vectors for RFC 6979 ECDSA (secp256k1, SHA-256)"
@@ -52,7 +56,7 @@ object TestVectorsRFC6979 {
   )   */
 
   
-  case class HTV(key:String, keyWIF:String, msg:String, sigDER:String)
+  case class HTV(keyHex:String, keyWIF:String, msg:String, sigDER:String)
   
   // HTV =  Haskoin test vector
   val htvs = 
@@ -116,10 +120,12 @@ object TestRFC6979 extends App {
       Deterministic => 38aa22d72376b4dbc472e06c3ba403ee0a394da63fc58d88686c611aba98d6b3
       Deterministic => 33a19b60e25fb6f4435af53a3d42d493644827367e6453928554f43e49aa6f90
       Deterministic => 525a82b70e67874398067543fd84c83d30c175fdc45fdeee082fe13b1d7cfdf1   */
- 
   // test vectors 2
   htvs.map{htv => 
-    assert (new PrvKey(htv.key, true).sign(htv.msg).toLowerCase == htv.sigDER.toLowerCase)
+    val eccPrvKey = new ECCPrvKey(htv.keyHex, true)
+    assert (eccPrvKey.sign(htv.msg).toLowerCase == htv.sigDER.toLowerCase)
+    assert (PrvKey.getPrvKeyP2PKH(htv.keyWIF).eccPrvKey == eccPrvKey)
+    assert (new PrvKey_P2PKH(eccPrvKey, true).getWIF == htv.keyWIF)
     println("Test passed for: "+htv.msg)
   }
 }
@@ -358,17 +364,17 @@ You have to break a few eggs to make an omlette.
 You have to take the good  with the bad.
 You win some, you lose some.""".lines.map(_.trim).toArray
   val keys1 = (1 to msgs.size).map{i =>
-    new PrvKey(i, true)
+    new ECCPrvKey(i, true)
   }.toArray
   val res1 = (keys1 zip msgs).map{
-    case (key, msg) => (key.key, msg, key.sign(msg))
+    case (key, msg) => (key.hex, msg, key.sign(msg))
   }
   res1 foreach println
   val keys2 = (1 to msgs.size).map{i =>
-    new PrvKey(sha256Bytes2Bytes(BigInt(i).toBytes).encodeHex, true)
+    new ECCPrvKey(sha256Bytes2Bytes(BigInt(i).toBytes).encodeHex, true)
   }.toArray
   val res2 = (keys2 zip msgs).map{
-    case (key, msg) => (key.key, msg, key.sign(msg))
+    case (key, msg) => (key.hex, msg, key.sign(msg))
   }
   res2 foreach println
   
@@ -384,7 +390,7 @@ object ValidateTestVectors extends App {
       val k = BigInt(a(0).drop(1))
       val s = a.last.dropRight(1)
       val m = a.drop(1).dropRight(1).reduceLeft(_+","+_)
-      val key = new PrvKey(k, true)
+      val key = new ECCPrvKey(k, true)
       val es = key.sign(m)
       require(es == s)
       println(s"Passed test for $m")

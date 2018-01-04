@@ -4,6 +4,10 @@ import BitcoinUtil._
 import java.util.concurrent.atomic.AtomicBoolean
 import sh.btc.DataStructures._
 import sh.ecc.Util._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
+import sh.btc.BitcoinS._
 
 class BlockParser(bytes:Array[Byte]) extends TxParserSegWit (bytes) { 
   // Header is the first 80 bytes, which has following data:

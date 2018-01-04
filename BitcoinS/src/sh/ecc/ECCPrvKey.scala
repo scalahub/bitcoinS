@@ -2,29 +2,22 @@
 package sh.ecc
 
 import Util._
-//import sh.util._
 import sh.btc.BitcoinUtil._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
+import sh.btc.BitcoinS._
 
+case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
+  def this(hex:String, compressed:Boolean) = this(BigInt(hex, 16), compressed)
+  if (bigInt >= n) throw new Exception(s"Private key must be < $n")
+  if (bigInt <= 0) throw new Exception(s"Private key must be > 0")
 
-abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Boolean) {
-  if (key >= n) throw new Exception(s"Private key must be < $n")
-  if (key <= 0) throw new Exception(s"Private key must be > 0")
+  val eccPubKey = new ECCPubKey(bigInt * G, compressed) // G is generator of EC
 
-  val pubKey = key * G // G is generator of EC
-
-  pubKey.isCompressed = compressed // set compressed info for pub key
+  val hex = bigInt.toHex(32)
+  val bytes = hex.decodeHex 
   
-  protected [sh] lazy val hex = key.toHex(32)
-  protected [sh] lazy val bytes = hex.decodeHex 
-  
-  //val pubKeyHex = pubKey.pubKeyHex 
-
-  @deprecated("Should not be exposed", "22 Dec 2017")
-  def getWIF:String = getBase58FromBytes( // from BitcoinUtil
-    ((if (isMainNet) "80" else "ef")+hex + (if (compressed) "01" else "")).decodeHex
-  )
-  
-  val sigHashAllBytes = getFixedIntBytes(0x01, 4)  // 1 implies SIGHASH_ALL // https://en.bitcoin.it/wiki/OP_CHECKSIG
   
   // returns (k, r) in a deterministic way from hash. Requires that hash is already input as SHA256(msg)
   // Follows: https://tools.ietf.org/html/rfc6979
@@ -33,7 +26,7 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
     val h1 = getBits(hash) // a
     var V = Array.fill(32)(0x01.toByte) // b
     var K = Array.fill(32)(0x00.toByte) // c
-    val intToOctets_key = intToOctets(key)
+    val intToOctets_key = intToOctets(bigInt)
     val bitsToOctets_h1 = bitsToOctets(h1)
     K = HMAC(K)(V ++ Array(0x00.toByte) ++ intToOctets_key ++ bitsToOctets_h1) // d
     V = HMAC(K)(V) // e
@@ -74,7 +67,7 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
     if (hash.size != 32) throw new Exception("Hash must be 32 bytes")
     val (k, r) = getDeterministicKRFromHash(hash)
     val h = BigInt(hash.encodeHex, 16) mod n
-    val s = ((h + key * r) * (k.modInverse(n))) mod n    
+    val s = ((h + bigInt * r) * (k.modInverse(n))) mod n    
     /*  https://github.com/bitcoin/bips/blob/master/bip-0062.mediawiki#Low_S_values_in_signatures
         Low S values in signatures:
         The value S in signatures must be between 
@@ -82,7 +75,7 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
         If S is too high, simply replace it by S' = 0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE BAAEDCE6 AF48A03B BFD25E8C D0364141 - S. */    
     (r, if (s > sMax) n - s else s)
   }
-  protected def signHash(hash:Array[Byte]) = {
+  private [ecc] def signHash(hash:Array[Byte]) = {
     val (r, s) = signHashGetRS(hash)
     encodeDERSig(r, s)
   }
@@ -90,19 +83,19 @@ abstract class AbstractPrvKey(protected [sh] val key:BigInt, val compressed:Bool
     // https://github.com/nanotube/supybot-bitcoin-marketmonitor/blob/master/GPG/local/bitcoinsig.py
     if (hash.size != 32) throw new Exception(s"Invalid hash. Must be 32 bytes. Currently ${hash.size} bytes.")
     val (r, s) = signHashGetRS(hash)
-    pubKey.encodeRecoverySig(r, s, hash)
+    eccPubKey.encodeRecoverySig(r, s, hash)
   }
   // uses key recovery
   def signMessageBitcoinD(message:String) = 
     signHashKeyRecovery(dsha256(getMessageToSignBitcoinD(message))).encodeBase64
   
-  override def toString = "PrvKey [Hidden] with publicKey: "+pubKey.hex
+  override def toString = "ECCPrvKey [Hidden] with publicKey: "+eccPubKey.hex
    
   // following are dangerous. Use signMessageBitcoinD. Kept only for testing
   @deprecated("Do not use in production. Only for testing!", "27 Dec 2017")
-  def sign(msg:String):String = (signHash(sha256Bytes2Bytes(msg.getBytes))).encodeHex
+  private [sh] def sign(msg:String):String = (signHash(sha256Bytes2Bytes(msg.getBytes))).encodeHex
   
   @deprecated("Do not use in production. Only for testing!", "27 Dec 2017")
-  def signMessageKeyRecovery(msg:String) = signHashKeyRecovery(dsha256(msg.getBytes)).encodeHex
+  private [sh] def signMessageKeyRecovery(msg:String) = signHashKeyRecovery(dsha256(msg.getBytes)).encodeHex
 }
 

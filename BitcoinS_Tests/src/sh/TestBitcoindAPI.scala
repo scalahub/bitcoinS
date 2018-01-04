@@ -3,16 +3,21 @@ package sh.btc
 
 
 import sh.btc.DataStructures._
-//import sh.ecc.Util._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
 import sh.ecc._
-import sh.util.CurlJsonData
+import sh.util.Json2XML
+import sh.btc.BitcoinS._
 
 object TestBitcoindAPI extends App {
-  BitcoinUtil.isMainNet = false
+  val mainNet = false
+  val compressed = true
   val b = new BitcoindAPI("user", "password", "http://localhost:8332")
   
   1 to 10000 foreach {i =>
-    val a = new PrvKey(i * 1000, true).pubKey.getAddress
+    val eccPrvKey = new ECCPrvKey(i * 1000, compressed)
+    val a = new PrvKey_P2PKH(eccPrvKey, mainNet).pubKey.address
     b.importAddress(a) // rescan is always false
   }
   println("tx "+b.getTransaction("b46d059b6984485e32a9743d8da7125c01f75ce5b39366eb402599d41cd82291"))
@@ -40,13 +45,13 @@ object TestBitcoindAPI extends App {
 object ParserTest extends App{  // tests the tx parser of BitcoindAPI (that parses response of getrawtransaction)
   import ParserTestData._
   val (segWitTx, _) = Parser.parseTxXML(segWitXML)
-  val (segWitTxFromJSON, _) = Parser.parseTxXML(CurlJsonData.jsonStringToXML(segWitJSON))
+  val (segWitTxFromJSON, _) = Parser.parseTxXML(Json2XML.jsonStringToXML(segWitJSON))
   assert(segWitTx.txid == segWitTxFromJSON.txid) // also other test
-  val (nonSegWitTx, _) = Parser.parseTxXML(CurlJsonData.jsonStringToXML(nonSegWitJSON))
+  val (nonSegWitTx, _) = Parser.parseTxXML(Json2XML.jsonStringToXML(nonSegWitJSON))
   assert(nonSegWitTx.txid == "1ccc8eb9f20925639cc0e4276ce1493e223cc94aeaebe7b1a66746a85e4ba125")
   assert(nonSegWitTx.segWitTxHash == "1ccc8eb9f20925639cc0e4276ce1493e223cc94aeaebe7b1a66746a85e4ba125")
   assert(segWitTx.segWitTxHash == "23c0084a8bfc410e46a1ba315c8cd393db45f8e80df7c3aabe0c175b2d6372f8")
-  val wit = segWitTx.witnesses(0)
+  val wit = segWitTx.wits(0)
   import sh.ecc.Util._
   assert(wit.data(0).toArray.encodeHex.toLowerCase == "3044022055863405aab0bab1dc76e6ef2f573e40df6cfdf2f0ee8235c4b82fff61ba7514022078bc22c5c2954d7f2d2f6ff438e7c2e88bcf815d09067982e6340750decbf0d601")
   assert(wit.data(1).toArray.encodeHex.toLowerCase == "039f53e45f8f18b8ed294378bda342eff69b2053debf27fbede7d2d6bd84be6235")

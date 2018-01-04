@@ -6,17 +6,19 @@ import sh.ecc.Util._
 import sh.btc.BitcoinUtil._
 import sh.btc.DataStructures._
 
-abstract class PrvKey_P2SH_P2PK(key:BigInt, compressed:Boolean) extends PrvKey_P2PKH(key, compressed) {  
+class PrvKey_P2SH_P2PK(eccPrvKey:ECCPrvKey, mainNet:Boolean) extends PrvKey(eccPrvKey, mainNet) {
+  lazy val pubKey = new PubKey_P2SH_P2PK(eccPrvKey.eccPubKey, mainNet)
   import pubKey._
+  import eccPrvKey._
   // P2SH 3Address. This is NOT multisig, but simple Pay to Public Key described in BIP16 (https://github.com/bitcoin/bips/blob/master/bip-0016.mediawiki)
+  def signTx(rawTx:Array[Byte], whichInputs:Seq[(Int, BigInt)]) = signTx_P2SH_P2PK(rawTx, whichInputs.unzip._1)
+  
   def signTx_P2SH_P2PK(rawTx:Array[Byte], whichInputs:Seq[Int]) = { // which input indices to sign
     val tx = new TxParserSegWit(rawTx).getSegWitTx // always parse as segwit, since we need to maintain witness data for possible mixed input tx
     val emptyIns = tx.ins.map(in => new TxIn(in.txHash, in.vOut)) // empty = remove all scriptSigs (default is None)
     whichInputs.map{i => 
       // https://bitcoin.stackexchange.com/a/37095/2075    
       val currIn = emptyIns(i)      
-      
-      val redeemScript = getRedeemScript_P2SH_P2PK // redeemScript is: [pubKeySize] [pubKey] [checkSig] 
       
       // create tx with empty scriptSig for all inputs except this one, which is set to redeemScript
       emptyIns(i).setScriptSig(redeemScript)
@@ -38,8 +40,10 @@ abstract class PrvKey_P2SH_P2PK(key:BigInt, compressed:Boolean) extends PrvKey_P
         (sigBytes.size.toByte +: sigBytes) ++
         (redeemScript.size.toByte +: redeemScript)
       )
+      // set also the corresponding witness to empty
+      tx.wits(i) = TxWit(Nil)
     }
-    createSegWitTxRawAdvanced(tx.version, tx.ins zip tx.witnesses, tx.outs, tx.lockTime) // always parse as segwit, since we need to maintain witness data for possible mixed input tx
+    createSegWitTxRawAdvanced(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime) // always parse as segwit, since we need to maintain witness data for possible mixed input tx
   }
   
 }

@@ -6,6 +6,9 @@ import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.util.concurrent.atomic.AtomicLong
 import sh.ecc.Util._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
 
 // Basic API for talking to bitcoind, if needed, say to scan blockchain or broadcast tx
 class BitcoindAPI(rpcuser:String, rpcpassword:String, rpcHost:String) {

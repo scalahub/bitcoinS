@@ -1,13 +1,18 @@
 
 package sh
 
-import sh.ecc.PrvKey
+import sh.ecc._
 import sh.ecc.Util._
 import sh.btc.BitcoinUtil._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
+import sh.btc.BitcoinS._
 
 object TestCompressedPubKey extends App {
   /*  https://bitcoin.stackexchange.com/a/22881/2075 
       https://gist.github.com/scalahub/96f31c6656802b5547a28a03d6d22cff */
+
   val str = """
 Private as int 79186670301299046436858412936420417076660923359050732094116068951337164773779
 Public address 1EE8rpFCSSaBmG19sLdgQLEWuDaiYVFT9J
@@ -105,8 +110,9 @@ Message: test123
 Signature: ID/UoYIc6He5C1/UOEhNPj/N4r2OIqP2Zdku0ZtXv4MecyHvpOanKO2Jjy2gO+lMSHL8DJuj/WQhzHg9g3VqAAA=
 MySig: IAjLYjtaScVd1haZiSfnDS/yQyy1RUXpB/Yug9YHaiaKLXI8ihHe3PGDZB2YIAJP6ivfpwBXrsHOtR/koqZxmWg=
 """
+  val compressed = true
+  val mainNet = true
   val testStrs = str.lines.map(_.trim).filterNot(_.isEmpty).grouped(5)
-  isMainNet = true
   testStrs.foreach{seq =>
     val _prvKeyInt = seq(0).drop("Private as int ".size).trim
     val _addr = seq(1).drop("Public address ".size).trim
@@ -116,21 +122,22 @@ MySig: IAjLYjtaScVd1haZiSfnDS/yQyy1RUXpB/Yug9YHaiaKLXI8ihHe3PGDZB2YIAJP6ivfpwBXr
     val _deterSigStr = seq(4).drop("MySig: ".size).trim
     val _deterSig = _deterSigStr.decodeBase64
    
-    val prvKey = new PrvKey(BigInt(_prvKeyInt), true)
+//    val eccPrvKey = new ECCPrvKey(BigInt(_prvKeyInt), compressed)
+    val prvKey = new PrvKey_P2PKH(new ECCPrvKey(BigInt(_prvKeyInt), compressed), mainNet)
     val hash = dsha256(getMessageToSignBitcoinD(_msg))
-    require(prvKey.pubKey.getAddress == _addr)
+    val addr = prvKey.pubKey.address
+    require(addr == _addr, s"Expected ${_addr}. Found ${addr}")
     val recoveredPubKey = recoverPubKey(_sig, hash)
-    require(recoveredPubKey == prvKey.pubKey)
-    assert(recoveredPubKey.verifyMessageBitcoinD(_msg, _sigStr))
+    require(recoveredPubKey == prvKey.pubKey.eccPubKey)
+    assert(recoveredPubKey.point.verifyMessageBitcoinD(_msg, _sigStr))
     
     val (id, _r, _s) = decodeRecoverySig(_sig)
-    require(recoveredPubKey.verify(hash, _r, _s))
-        
-    val ourSigStr = prvKey.signMessageBitcoinD(_msg)
+    require(recoveredPubKey.point.verify(hash, _r, _s))
+    val ourSigStr = prvKey.eccPrvKey.signMessageBitcoinD(_msg)
     
     assert(_deterSigStr == ourSigStr, s"Deterministic signature mismatch. Expected ${_deterSigStr}. Found $ourSigStr")
     val (ourId, r, s) = decodeRecoverySig(ourSigStr.decodeBase64)
-    assert(prvKey.pubKey.verifyMessageBitcoinD(_msg, ourSigStr))
+    assert(prvKey.pubKey.eccPubKey.point.verifyMessageBitcoinD(_msg, ourSigStr))
     //    println(" PrvKey "+_prvKeyInt)
     //    println("Address "+_addr)
     //    println("Message "+_msg)

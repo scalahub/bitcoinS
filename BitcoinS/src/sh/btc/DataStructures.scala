@@ -3,7 +3,9 @@ package sh.btc
 
 import sh.btc.BitcoinUtil._
 import sh.ecc.Util._
-
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
 
 object DataStructures {
   
@@ -35,7 +37,7 @@ object DataStructures {
   }
 
   case class TxSegWit(
-    version:Long, ins:Seq[TxIn], outs:Seq[TxOut], witnesses:Array[TxWit], lockTime:Long, txid:String, 
+    version:Long, ins:Seq[TxIn], outs:Seq[TxOut], wits:Array[TxWit], lockTime:Long, txid:String, 
     isSegWit:Boolean, segWitTxHash:String, size:Int, vSize:Int
   ) {
     def printTx = {
@@ -43,7 +45,7 @@ object DataStructures {
       outs.zipWithIndex foreach {case (out, i) => println(s"Out -> $txid:$i => "+out)}
       println
     }    
-    def serialize = createSegWitTxRawAdvanced(version, ins zip witnesses, outs, lockTime)
+    def serialize = createSegWitTxRawAdvanced(version, ins zip wits, outs, lockTime)
   }
 
   case class TxSimple(version:Long, ins:Seq[TxIn], outs:Seq[TxOut], txid:String, size:Int, lockTime:Long) {

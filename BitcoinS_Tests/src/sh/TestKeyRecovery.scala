@@ -3,6 +3,10 @@ package sh
 import sh.ecc._
 import sh.ecc.Util._
 import sh.btc.BitcoinUtil._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
+import sh.btc.BitcoinS._
 
 object TestKeyRecovery extends App {
   TestKeyRecovery1
@@ -16,12 +20,12 @@ object TestKeyRecovery extends App {
 }
 object TestKeyRecovery1 {
   println("Test 1: [recover keys using method 1, validate signatures, custom signing method]")
-  val a = new PrvKey(100, true)
-  val b = a.pubKey
+  val a = new ECCPrvKey(100, true)
+  val b = a.eccPubKey
   val c = a.sign("hello")
   val h = sha256Bytes2Bytes("hello".getBytes)
   val (r, s) = decodeDERSig(c)    
-  val recovered = recoverPubKeys(r, s, h)
+  val recovered = recoverPubKeyPoints(r, s, h)
   assert(recovered.size == 4)
   recovered.flatten.foreach{pk =>
     assert(pk.verify(h, r, s))
@@ -31,8 +35,8 @@ object TestKeyRecovery2 {
   // Using the method in https://crypto.stackexchange.com/a/18106/81
   println("Test 2: [recover keys using method 2, validate signatures, custom signing method]")
   // Note that method 2 does not look at small r where r+n is also a point on the curve
-  val a = new PrvKey(100, true)
-  val b = a.pubKey
+  val a = new ECCPrvKey(100, true)
+  val b = a.eccPubKey
   val c = a.sign("hello")
   //////////////////////////////////
   val h = sha256Bytes2Bytes("hello".getBytes)
@@ -47,27 +51,26 @@ object TestKeyRecovery2 {
   val P1:Point = rInv * (s * R1 - z * G)
   val P2:Point = rInv * (s * R2 - z * G)
 
-  assert(b.verify(h, r, s) == true)
+  assert(b.point.verify(h, r, s) == true)
   assert(P1.verify(h, r, s) == true)
   assert(P2.verify(h, r, s) == true)
   
-  val recovered = recoverPubKeys(r, s, h)
+  val recovered = recoverPubKeyPoints(r, s, h)
   assert(recovered.size == 4)
   recovered.flatten.foreach{pk =>
     assert(pk.verify(h, r, s))
   }
-  assert(recoverPubKeys(r, s, h).flatten.contains(P1))
-  assert(recoverPubKeys(r, s, h).flatten.contains(P2))
+  assert(recoverPubKeyPoints(r, s, h).flatten.contains(P1))
+  assert(recoverPubKeyPoints(r, s, h).flatten.contains(P2))
 }
 object TestKeyRecovery3 {
   println("Test 3: [recover keys using method 1 with test vector, validate signatures, bitcoind signing method]")
-  isMainNet = false
   val msg = "18426974636F696E205369676E6564204D6573736167653A0A17736F206D616E7920746F2063686F6F73652066726F6D21".decodeHex
   // Bitcoin Signed Message: so many to choose from!
   val h = dsha256(msg)
   val sig = "3006020104020104"
   val (r, s) = decodeDERSig(sig)
-  val recovered = recoverPubKeys(r, s, h)
+  val recovered = recoverPubKeyPoints(r, s, h)
   assert(recovered.size == 4)
   recovered.flatten.map{pk =>  
     assert(pk.verify(h, r, s))
@@ -136,9 +139,10 @@ object TestKeyRecovery4 {
     val sig = lines(3).drop("DER signature = ".size)
     val (r, s) = decodeDERSig(sig)
     val h = dsha256(msg.decodeHex)
-    val rpks = recoverPubKeys(r, s, h).flatten.map(_.setCompressed(false)) // .reverse
-    val allRPks = rpks ++ rpks.map{rpk =>
-      new Point(rpk.x, rpk.y).setCompressed(true)
+    val rpks = recoverPubKeyPoints(r, s, h).flatten // .reverse
+    val pks = rpks.map(rpk => new ECCPubKey(rpk, false))
+    val allRPks:Seq[ECCPubKey] = pks ++ rpks.map{rpk =>
+      new ECCPubKey(rpk, true)
     }
     val testpks = lines.drop(4).grouped(2).toArray
     allRPks zip testpks map {
@@ -148,12 +152,14 @@ object TestKeyRecovery4 {
         val addr = a(0)
         val sig = a(1)
         val msg = a.drop(2).reduceLeft(_ + " " + _).drop(1).dropRight(1)
-        assert(rpk.verify(h, r, s))          
+        assert(rpk.point.verify(h, r, s))          
         assert(msg == "so many to choose from!")
         val pkHex = line12(1).split("#")(1).trim
         assert(rpk.encodeRecoverySig(r, s, h).encodeBase64 == sig)
         assert(pkHex.toLowerCase == rpk.hex.toLowerCase)
-        assert(rpk.getAddress == addr)        
+        val btcPk = new PubKey_P2PKH(rpk, false) // testnet
+        val newAddr = btcPk.address
+        assert(newAddr == addr, s"Expected $addr, found ${newAddr}")        
     }
   }
 }
@@ -175,46 +181,76 @@ object TestKeyRecovery5 {
 
 object TestKeyRecovery6 {
   println("Test 6: [check that recover pubKey returns EXACTLY one public key]")
-  isMainNet = true
-  
   val msg = "ABCD"
   1 to 20 foreach {i =>
     Seq(true, false).map{compr =>
-      val key = new PrvKey(i, compr)
-      val address = key.pubKey.getAddress
-      val sig = key.signMessageBitcoinD(msg)
+      Seq(true, false).map{mainNet =>
+        val key = new ECCPrvKey(i, compr)
+        val p2pkhKey = new PrvKey_P2PKH(key, mainNet)
+        val address = p2pkhKey.pubKey.address
+        val sig = key.signMessageBitcoinD(msg)
 
-      val (byteIndex, r, s) = decodeRecoverySig(sig.decodeBase64) // byteIndex will be between 0 and 7 inclusive
+        val (byteIndex, r, s) = decodeRecoverySig(sig.decodeBase64) // byteIndex will be between 0 and 7 inclusive
 
-      if (compr) assert(byteIndex >= 4) // for compressed it must be less than 4
-      if (!compr) assert(byteIndex < 4) // for compressed it must be greater than or equal to 4
-      
-      val recovered = recoverPubKeys(r, s, dsha256(getMessageToSignBitcoinD(msg)))
-      val actualIndex = byteIndex % 4 // mod 4
-      val valid = recovered.zipWithIndex.collect{
-        case (Some(x), `actualIndex`) =>  // i will be between 0 and 3 // it does not care compressed or uncompressed
-          assert(x.verifyMessageBitcoinD(msg, sig))
-          x.setCompressed(byteIndex >= 4).getAddress
+        if (compr) assert(byteIndex >= 4) // for compressed it must be less than 4
+        if (!compr) assert(byteIndex < 4) // for compressed it must be greater than or equal to 4
+
+        val recoveredPoints = recoverPubKeyPoints(r, s, dsha256(getMessageToSignBitcoinD(msg)))
+        val actualIndex = byteIndex % 4 // mod 4
+        val valid = recoveredPoints.zipWithIndex.collect{
+          case (Some(x), `actualIndex`) =>  // i will be between 0 and 3 // it does not care compressed or uncompressed
+            assert(x.verifyMessageBitcoinD(msg, sig))
+            val newCompr = byteIndex >= 4
+            new PubKey_P2PKH(new ECCPubKey(x, newCompr), mainNet).address
+        }
+
+        assert(valid.size == 1)
+        assert(valid.head == address)
       }
-
-      assert(valid.size == 1)
-      assert(valid.head == address)
     }
   }
+
+//  val compressed = true
+  val mainNet = true
+  1 to 20 foreach {i =>
+    //val eccPrvKey = new ECCPrvKey(i, compressed)
+    val key = new PrvKey_P2SH_P2WPKH(i, mainNet)
+    val address = key.pubKey.address
+    val eccPrvKey = key.eccPrvKey
+        
+    val sig = eccPrvKey.signMessageBitcoinD(msg)
+
+    val (byteIndex, r, s) = decodeRecoverySig(sig.decodeBase64) // byteIndex will be between 0 and 7 inclusive
+
+    assert(byteIndex >= 4) // for compressed it must be less than 4
+
+    val recoveredPoints = recoverPubKeyPoints(r, s, dsha256(getMessageToSignBitcoinD(msg)))
+    val actualIndex = byteIndex % 4 // mod 4
+    val valid = recoveredPoints.zipWithIndex.collect{
+      case (Some(x), `actualIndex`) =>  // i will be between 0 and 3 // it does not care compressed or uncompressed
+        assert(x.verifyMessageBitcoinD(msg, sig))
+        val isCompressed = byteIndex >= 4
+        new PubKey_P2SH_P2WPKH(x, mainNet).address
+    }
+
+    assert(valid.size == 1)
+    assert(valid.head == address, s"Found ${valid.head}. Expected $address")
+  }
+  
 }
 object TestKeyRecovery7 {
   println("Test 7: [check that bitcoind sign and verify work]")
-  isMainNet = true
   
   val message = "ABCD"
   1 to 20 foreach {i =>
     Seq(true, false).map{compr =>
-      val key = new PrvKey(n - i, compr)
+      val key = new ECCPrvKey(n - i, compr)
       val sig = key.signMessageBitcoinD(message)
-      val recovered = recoverPubKey(sig.decodeBase64, dsha256(getMessageToSignBitcoinD(message)))
-      assert(recovered == key.pubKey)
-      assert(recovered.getAddress == key.pubKey.getAddress)
-      assert(recovered.verifyMessageBitcoinD(message, sig))
+      val recovered:ECCPubKey = recoverPubKey(sig.decodeBase64, dsha256(getMessageToSignBitcoinD(message)))
+      assert(recovered == key.eccPubKey)
+      
+      assert(new PubKey_P2PKH(recovered, true).address == new PrvKey_P2PKH(key, true).pubKey.address)
+      assert(recovered.point.verifyMessageBitcoinD(message, sig))
     }
   }
 }

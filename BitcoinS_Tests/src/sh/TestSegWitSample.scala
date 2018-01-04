@@ -5,8 +5,11 @@ import sh.btc.DataStructures._
 import sh.btc._
 //import sh.util.Hex
 import sh.btc.BitcoinUtil._
-import sh.ecc.PrvKey
+import sh.ecc._
 import sh.ecc.Util._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
 
 object TestSegWitSample extends App {
   // following uses the example at https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki#P2SHP2WPKH
@@ -73,12 +76,13 @@ The following is an unsigned transaction: 0100000001db6b1b20aa0fd7b23880be2ecbd4
   require(tx.version == 1)
   require(tx.lockTime == getUInt4LittleEndian("92040000".decodeHex))
   
-  val prvKey = new PrvKey("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf", true)
-  val pubKey = prvKey.pubKey
+  val prvKey = new ECCPrvKey("eb696a065ef48a2192da5b28b694f87544b30fae8327c4510137a922f32c6dcf", true)
+  val pubKey = prvKey.eccPubKey
   require(pubKey.hex.toLowerCase == "03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873")
-  val redeemScript = pubKey.getRedeemScript_P2WPKH
-  require(redeemScript.encodeHex.toLowerCase == "001479091972186c449eb1ded22b78e40d009bdf0089")
-  val address = pubKey.getAddress_P2WPKH
+  val puKey = new PubKey_P2SH_P2WPKH(pubKey.point, true)
+  val redeemScript = puKey.redeemScript
+  require(redeemScript.toArray.encodeHex.toLowerCase == "001479091972186c449eb1ded22b78e40d009bdf0089")
+  val address = puKey.address
   val scriptPubKey = getScriptPubKeyFromAddress(address).toArray
   require(scriptPubKey.encodeHex.toLowerCase == "a9144733f37cf4db86fbc2efed2500b4f4e49f31202387")
   
@@ -99,7 +103,7 @@ The following is an unsigned transaction: 0100000001db6b1b20aa0fd7b23880be2ecbd4
   require(out2 == tx.outs(1))
   // below assumes that the sample uses deterministic k generation used in RFC6969 (which it does!)
   // so the signed tx also matches!
-  val signed = prvKey.signTx_P2SH_P2WPKH(unsigned.decodeHex, Seq((0, 1000000000)))
+  val signed = new PrvKey_P2SH_P2WPKH(prvKey.bigInt, true).signTx(unsigned.decodeHex, Seq((0, 1000000000)))
   require(signed.encodeHex.toLowerCase == "01000000000101db6b1b20aa0fd7b23880be2ecbd4a98130974cf4748fb66092ac4d3ceb1a5477010000001716001479091972186c449eb1ded22b78e40d009bdf0089feffffff02b8b4eb0b000000001976a914a457b684d7f0d539a46a45bbc043f35b59d0d96388ac0008af2f000000001976a914fd270b1ee6abcaea97fea7ad0402e8bd8ad6d77c88ac02473044022047ac8e878352d3ebbde1c94ce3a10d057c24175747116f8288e5d794d12d482f0220217f36a485cae903c713331d877c1f64677e3622ad4010726870540656fe9dcb012103ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a2687392040000")
   val stx = new TxParserSegWit(signed).getSegWitTx
   println("signed txid "+stx.txid)

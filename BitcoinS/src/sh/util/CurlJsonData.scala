@@ -4,14 +4,10 @@ package sh.util
 import java.io.StringWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import Json2XML._
 import org.apache.commons.io.IOUtils
-import org.json.JSONObject
 
 object CurlJsonData { // makes curl requesr with JSON input (and possibly output)
-  def jsonStringToXML(s:String) = try scala.xml.XML.loadString("<JSON>"+org.json.XML.toString(new JSONObject(s))+"</JSON>") catch {
-    case e:Any => <error>{e.getMessage}</error>
-  }
-  
   def curlXML(url:String, jsonEncodedString:String) = jsonStringToXML(curl(url, jsonEncodedString))
 
   /**

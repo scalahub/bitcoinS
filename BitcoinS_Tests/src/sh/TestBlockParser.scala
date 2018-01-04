@@ -7,12 +7,14 @@ import sh.ecc.Util._
 import scala.collection.JavaConversions._
 import sh.util._
 import sh.btc.BitcoinUtil._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
 
 // add more vectors from https://motls.blogspot.in/2017/12/bitcoin-block-without-valid-miner-fee.html
 
 object TestBlockParser extends App {
-  import BlockParserTestVectors._
-  
+  import BlockParserTestVectors._  
   Seq(    
     blk1Vector,
     blk2Vector,
@@ -134,7 +136,7 @@ class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String
   val bytes = hex.decodeHex  
   require(bytes.size == size, s"Expected $size bytes. Found ${bytes.size} bytes")
   ///////////////////////////////////
-  val xml = CurlJsonData.jsonStringToXML(json)
+  val xml = Json2XML.jsonStringToXML(json)
   val xhash = (xml \\ "hash").text
   val xmerkleRoot = (xml \\ "merkleroot").text
   val xtxids = (xml \\ "tx").map(_.text)  

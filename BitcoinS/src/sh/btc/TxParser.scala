@@ -29,8 +29,7 @@ class TxParser(bytes:Array[Byte]) extends AbstractParser(bytes) {
       val txHash = getNext32Hash // also converts from little endian to normal
       val vOut = getNext4UInt // signed // can be -1  // should be unsigned as per protocol spec
       // but coinbase inputs have -1 
-      // Java automatically converts 0x
-      // println("VOUT -> "+vOut)
+    
       val scriptSig = getNextBytes(getCompactInt) // getCompactInt returns the size of input script
       val seqNumBytes = getNextBytes(4) // 4 bytes for sequence number      
       val seqNum = getUInt4LittleEndian(seqNumBytes.toArray)

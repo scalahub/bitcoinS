@@ -3,13 +3,18 @@ package sh
 
 import sh.btc._
 import sh.ecc.Util._
+import java.io.File
+import java.nio.file.Files
 import scala.collection.JavaConversions._
 import sh.util._
 import sh.btc.BitcoinUtil._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
+import sh.btc.BitcoinS._
 
 object TxParserTest extends App {
   import TxParserTestVectors._
-  isMainNet = true
   Seq(
     coinBaseTx, 
     dataTx1, 
@@ -30,15 +35,19 @@ object TxParserTest extends App {
     strangeTx5,
     strangeTx6,
     strangeTx7,
-    strangeTx8
+    strangeTx8,
+    strangeTx9
   ).foreach{
     case (hex, txid, hash, vSize) => // hash is segwitTxID
       new TxParserTest(hex, txid, hash, vSize)
   }
+  CoreValidTxTestVectors
   println("All tx parser tests passed!")
 }
 class TxParserTest(hex:String, txid:String, hash:String, vSize:Int) {
-  val size = hex.size/2 
+  val hexSize = hex.size
+  require(hexSize.isEven)
+  val size = hexSize/2
   val bytes = hex.decodeHex
 
   val tx = new TxParserSegWit(bytes).getSegWitTx
@@ -58,7 +67,7 @@ class TxParserTest(hex:String, txid:String, hash:String, vSize:Int) {
     case ((l, r), i) => assert(l == r, s"Left ($l) != Right ($r) at index $i")
   }
 
-  val newBytes = createSegWitTxRawAdvanced(tx.version, tx.ins zip tx.witnesses, tx.outs, tx.lockTime)
+  val newBytes = createSegWitTxRawAdvanced(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
   assert(newBytes.size == bytes.size)
   (newBytes zip bytes).zipWithIndex.foreach{
     case ((l, r), i) => assert(l == r, s"Left ($l) != Right ($r) at index $i")
@@ -236,4 +245,38 @@ object TxParserTestVectors {
     "42de7d41444157f3949990a144751fc6eca3d0f7f17cd10fc661cb2bf724bd63", // hash
     256 // vSize
   )
+  val strangeTx9 = ( // from bitcoin-core tests 
+    "010000000100010000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000",
+    "3444be2e216abe77b46015e481d8cc21abd4c20446aabf49cd78141c9b9db87e",
+    "3444be2e216abe77b46015e481d8cc21abd4c20446aabf49cd78141c9b9db87e",
+    60
+  )
 }
+
+object CoreValidTxTestVectors {
+  val vJsonFile = "txValid.json"
+  val ivJsonFile = "txInvalid.json"
+  // Note that this only checks that the tx is correctly serialized and deserialized
+  // It does not check the standardness or validity of tx according to core rules. This is done elsewhere
+  Seq((vJsonFile, 83153), (ivJsonFile, 42752)).foreach{  // size found via first run
+    case (jsonFile, size) =>
+      val json = Files.readAllLines(new File(jsonFile).toPath).reduceLeft(_ + _)
+      require(json.size == size) // size found via first run
+      val xmls = (Json2XML.jsonStringToXML(s"""{"data":$json}""") \ "data").map(_ \ "array").filter(_.size > 1)
+      xmls.foreach{xml =>
+        val hex = xml.dropRight(1).takeRight(1).text
+        val bytes = hex.decodeHex
+        val tx = new TxParserSegWit(bytes).getSegWitTx
+        val sBytes = tx.serialize
+        assert(bytes.size == sBytes.size)
+        (sBytes zip bytes).zipWithIndex.foreach{
+          case ((sB, b), i) =>
+            assert(sB == b, s"Byte mismatch at index $i. Expected $b, found $sB")
+        }
+        println("Passed: "+tx.txid)    
+      }
+      println
+      println("All tests passed")
+  }
+}
+

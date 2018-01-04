@@ -3,6 +3,9 @@ package sh
 
 import sh.ecc._
 import sh.ecc.Util._
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
 
 object TestECC extends App {
   // generate random keys
@@ -45,9 +48,9 @@ object TestECC extends App {
       val x = a(1).drop("x = ".size).trim
       val y = a(2).drop("y = ".size).trim
       val point = new Point(x, y)
-      val pubKey = new PrvKey(if (hexKey) BigInt(k, 16) else BigInt(k), true).pubKey
-      (point, pubKey)
-      assert(point == pubKey)
+      val eccPubKey = new ECCPrvKey(if (hexKey) BigInt(k, 16) else BigInt(k), true).eccPubKey
+      (point, eccPubKey)
+      assert(point == eccPubKey.point)
       assertException(PointAtInfinityException.getClass)(n * point)
       // below code does exactly the same as above line
       try {

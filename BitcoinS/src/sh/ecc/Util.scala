@@ -4,13 +4,15 @@ package sh.ecc
 import java.security.MessageDigest
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import sh.util.Base64
-import sh.util.Hex
+import sh.util.BytesUtil._
+import sh.util.StringUtil._
+import sh.util.BigIntUtil._
+
+//import sh.util.Hex
 
 object PointAtInfinityException extends Exception("Point at Infinity")
 
 object Util {
-  type PubKey = Point
   
   def ripeMD160(raw:Array[Byte]) = {
     // putting below import inside. It will only be invoked if ripeMD160 is called
@@ -38,7 +40,7 @@ object Util {
   // Note that sMax = (n-1)/2
   val sMax = BigInt("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0", 16)
 
-  val G = Point("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
+  val G = ECCPubKey("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798").point
   
   // given x coordinate of a point, returns the ys (even first and odd second)
   def findYs(x:BigInt) = { // returns (even, odd)
@@ -50,47 +52,6 @@ object Util {
     if (y1.lowestSetBit == 0) (y2, y1) else (y1, y2)
   } 
 
-  
-  class BetterString(string:String) {
-    def decodeHex = Hex.decode(string)
-    def decodeBase64 = Base64.decode(string)
-  }
-
-  class BetterByteArray(bytes:Seq[Byte]) {
-    def encodeHex = Hex.encodeBytes(bytes)
-    def encodeBase64 = Base64.encodeBytes(bytes.toArray)
-  }
-  
-  implicit def ByteArrayToBetterByteArray(bytes:Array[Byte]) = new BetterByteArray(bytes)
-  
-  implicit def StringToBetterString(string:String) = new BetterString(string)
-   
-  // BetterBigInt allows scalar multiplication with point, so we can write
-  // i * P, where i is a BigInt and P is a Point.
-  // Although BigInt does not have * operation with a point, BetterBigInt does and the implicits
-  // below automatically convert BigInt to BetterBigInt and back as and when necessary
-  class BetterBigInt (i:BigInt) {
-    def *(P:Point) = P * i
-    def toHex = {
-      val h = i.toString(16)
-      if (h.size % 2 == 1) "0"+h else h
-    }
-    def toHex(numBytes:Int):String = {
-      val numHex = numBytes * 2
-      val hex = toHex
-      if (hex.size > numHex) throw new Exception("Error converting $i to hex with $numBytes bytes. Requires ${hex.size/2} bytes")
-      val prefix = (1 to (numHex - hex.size) map{i => "0"} mkString)
-      prefix ++ hex
-    }
-    def toBytes = toHex.decodeHex
-  }
-
-  // below automatically converts BigInt to BetterBigInt when needed
-  implicit def bigIntToBetterBigInt(i:BigInt) = new BetterBigInt(i)
-  
-  // below automatically converts BetterBigInt to BigInt when needed
-  implicit def intToBetterBigInt(i:Int) = new BetterBigInt(i)
-  
   // below neded for deterministic k value generation
   private def getHMAC(secretKey:Array[Byte]) = {
     val HMAC_SHA256_ALGORITHM = "HmacSHA256";
@@ -150,7 +111,10 @@ object Util {
   }
 
   def decodeDERSig(signature:String) = {
-    val sig = signature.decodeHex
+    decodeDERSigBytes(signature.decodeHex)
+  }
+
+  def decodeDERSigBytes(sig:Array[Byte]) = {
     if (sig(0) != 0x30.toByte) throw new Exception(s"Invalid signature: First byte must be ${0x30}. Found ${sig(0)}")    
     val tLen = sig(1).intValue + 2
     if (sig.size != tLen) throw new Exception(s"Expected $tLen bytes in signature. Found ${sig.size} bytes.")
@@ -170,7 +134,7 @@ object Util {
   
   // key recovery http://www.secg.org/sec1-v2.pdf
   // https://crypto.stackexchange.com/a/18106/81
-  def recoverPubKeys(r:BigInt, s:BigInt, hash:Array[Byte]):Seq[Option[Point]] = {
+  def recoverPubKeyPoints(r:BigInt, s:BigInt, hash:Array[Byte]):Seq[Option[Point]] = {
     if (hash.size != 32) throw new Exception(s"Hash must be 32 bytes. Currently ${hash.size} bytes")
     val h = BigInt(hash.encodeHex, 16)
     val rInv = r.modInverse(n)
@@ -219,9 +183,9 @@ object Util {
   def recoverPubKey(recoverySig:Array[Byte], hash:Array[Byte]) = {
     val (byteIndex, r, s) = decodeRecoverySig(recoverySig)
     val actualIndex = byteIndex % 4 // mod 4 (max 4 distinct keys can be recovered)
-    recoverPubKeys(r, s, hash).zipWithIndex.collect{
+    recoverPubKeyPoints(r, s, hash).zipWithIndex.collect{
       case (Some(x), `actualIndex`) =>  // i will be between 0 and 3 // it does not care compressed or uncompressed
-        x.setCompressed(byteIndex >= 4)
+        new ECCPubKey(x, byteIndex >= 4)
     }.head
   }
   
