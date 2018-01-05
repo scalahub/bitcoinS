@@ -231,8 +231,7 @@ Value	Storage length	Format
      */
   }
   
-  def toggleEndianString(hex:String) = {
-    // little to big and vice versa on each call
+  def toggleEndianString(hex:String) = { // little to big and vice versa on each call
     if (hex.size % 2 == 1) throw new Exception(s"Hex has odd number of chars (${hex.size})")
     hex.grouped(2).toSeq.reverse.mkString.decodeHex
   }
@@ -273,35 +272,14 @@ Value	Storage length	Format
     val lockTimeBytes = getFixedIntBytes(lockTime, 4) // should be Seq[Byte](0x00, 0x00, 0x00, 0x00)
     versionBytes ++ flagMarkerBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ witBytes ++ lockTimeBytes
   }.toArray
-  
-  // To do: implement P2SH validation. Currently only validates P2PKH
-  def validateTxSig(tx:Tx, inAddresses:Seq[Address]) = {    
-    val ins = tx.ins 
-    if (ins.size != inAddresses.size) throw new Exception("Number of inputs and addresses must be same")
-    val emptyIns = tx.ins.map(in => new TxIn(in.txHash, in.vOut).setSeqNum(in.seqNum)) // empty = remove all scriptSigs (default is None)
-    val emptyWits = Seq.fill(tx.ins.size)(TxWit(Nil))
-    (ins zip inAddresses).zipWithIndex forall{
-      case ((in, address), i) =>
-        val (spk, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(address)
-        if (isMainNetAddr != isMainNet) throw new Exception(s"MainNet mismatch between address and current setting") 
-        val sigAndPubKey = in.optScriptSig.getOrElse(throw new Exception(s"Input #$i has not been signed (address: $address)") )        
-        emptyIns(i).setScriptSig(getScriptPubKeyFromAddress(address))
-        val bytesSigned = createSegWitTx(tx.version, emptyIns zip emptyWits, tx.outs, tx.lockTime) ++ sigHashAllBytes
-        emptyIns(i).unsetScriptSig
-        val hash = dsha256(bytesSigned)
 
-        val sigSize = sigAndPubKey(0).toInt
-        val sigBytes = sigAndPubKey.drop(1).take(sigSize)
-        val pubKeySize = sigAndPubKey(sigSize+1).toInt
-        val pubKeyBytes = sigAndPubKey.drop(sigSize+2).take(pubKeySize)
-        
-        val sigWhatByte = sigBytes.last
-        if (sigWhatByte != 0x01.toByte) throw new Exception(s"Require SIGHASH_ALL appended to signature") 
-        val actualSig = sigBytes.init
-
-        val (r, s) = decodeDERSigBytes(actualSig.toArray)
-        val point = ECCPubKey(pubKeyBytes.toArray.encodeHex).point
-        point.verify(hash, r, s)
-    }
+  def decodeScriptSigPubKey(sigAndPubKey:Seq[Byte]) = {
+    val sigSize = sigAndPubKey(0).toInt
+    val sigBytes = sigAndPubKey.drop(1).take(sigSize)
+    val pubKeySize = sigAndPubKey(sigSize+1).toInt
+    val pubKeyDER = sigAndPubKey.drop(sigSize+2).take(pubKeySize).toArray.encodeHex
+    val sigWhatByte = sigBytes.last
+    val actualSig = sigBytes.init
+    (decodeDERSigBytes(actualSig.toArray), ECCPubKey(pubKeyDER), sigWhatByte)
   }
 }
