@@ -19,7 +19,8 @@ private [sh] object BitcoinUtil {
   val OP_CheckSig = 0xac.toByte
   //  val OP_Return = 0x6a.toByte
   
-  //  // below used onlu for OP_Return. Not neede for now, hence commented out
+  //  // below used only for OP_Return. Not needed for now, hence commented out
+  //  // We may need to process OP_Return if we need to write to or read from blockchain (i.e., write arbitrary data)
   //  val OP_PushData = 0x4b.toByte  
   //  val OP_PushData1 = 0x4c.toByte
   //  val OP_PushData2 = 0x4d.toByte
@@ -236,34 +237,10 @@ Value	Storage length	Format
     hex.grouped(2).toSeq.reverse.mkString.decodeHex
   }
   
-  // advanced = takes more inputs: version and locktime
-  def createNonSegWitTxRawAdvanced(version:Long, ins:Seq[TxIn], outs:Seq[TxOut], lockTime:Long) = {
-    val inCtrBytes = getVarIntBytes(ins.size)
-    val inBytes = ins.flatMap{in =>
-      val prevTxHashBytes = toggleEndianString(in.txHash)
-      val vOutBytes = getFixedIntBytes(in.vOut, 4)
-      val scriptSig = in.optScriptSig.getOrElse(Nil)
-      val scriptSigBytes = getVarIntBytes(scriptSig.size) 
-      prevTxHashBytes ++ vOutBytes ++ scriptSigBytes ++ scriptSig ++ in.seqNumBytes
-    }
-    val outCtrBytes = getVarIntBytes(outs.size)
-    val outBytes = outs.flatMap{out =>
-      val valueBytes = getFixedIntBytes(out.value, 8)
-      val lockingScriptBytes = out.optScriptPubKey match {
-        case Some(scriptPubKey) =>           
-          val scriptPubKeySizeBytes = getVarIntBytes(scriptPubKey.size)
-          scriptPubKeySizeBytes ++ scriptPubKey
-        case _ => Seq(0x00.toByte) // should not happen under normal circumstances
-      }
-      valueBytes ++ lockingScriptBytes
-    }
-    val versionBytes = getFixedIntBytes(version, 4)
-    val lockTimeBytes = getFixedIntBytes(lockTime, 4) // should be Seq[Byte](0x00, 0x00, 0x00, 0x00)
-    versionBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ lockTimeBytes
-  }.toArray
+  def createNonSegWitTx(version:Long, ins:Seq[TxIn], outs:Seq[TxOut], lockTime:Long) = 
+    createSegWitTx(version, ins map {in => (in, TxWit(Nil))}, outs, lockTime)
   
-  // advanced = takes more inputs: version, witnesses and locktime
-  def createSegWitTxRawAdvanced(version:Long, insWits:Seq[(TxIn, TxWit)], outs:Seq[TxOut], lockTime:Long) = {    // inputs also contains amount
+  def createSegWitTx(version:Long, insWits:Seq[(TxIn, TxWit)], outs:Seq[TxOut], lockTime:Long) = {    // inputs also contains amount
     val (ins, wits) = insWits.unzip
     val inBytes = ins.flatMap{in =>
       val prevTxHashBytes = toggleEndianString(in.txHash)
@@ -297,17 +274,19 @@ Value	Storage length	Format
     versionBytes ++ flagMarkerBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ witBytes ++ lockTimeBytes
   }.toArray
   
-  def validateTxSig(tx:TxSegWit, inAddresses:Seq[Address]) = {    
+  // To do: implement P2SH validation. Currently only validates P2PKH
+  def validateTxSig(tx:Tx, inAddresses:Seq[Address]) = {    
     val ins = tx.ins 
     if (ins.size != inAddresses.size) throw new Exception("Number of inputs and addresses must be same")
     val emptyIns = tx.ins.map(in => new TxIn(in.txHash, in.vOut).setSeqNum(in.seqNum)) // empty = remove all scriptSigs (default is None)
+    val emptyWits = Seq.fill(tx.ins.size)(TxWit(Nil))
     (ins zip inAddresses).zipWithIndex forall{
       case ((in, address), i) =>
         val (spk, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(address)
         if (isMainNetAddr != isMainNet) throw new Exception(s"MainNet mismatch between address and current setting") 
         val sigAndPubKey = in.optScriptSig.getOrElse(throw new Exception(s"Input #$i has not been signed (address: $address)") )        
         emptyIns(i).setScriptSig(getScriptPubKeyFromAddress(address))
-        val bytesSigned = createNonSegWitTxRawAdvanced(tx.version, emptyIns, tx.outs, tx.lockTime) ++ sigHashAllBytes
+        val bytesSigned = createSegWitTx(tx.version, emptyIns zip emptyWits, tx.outs, tx.lockTime) ++ sigHashAllBytes
         emptyIns(i).unsetScriptSig
         val hash = dsha256(bytesSigned)
 

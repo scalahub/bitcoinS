@@ -197,7 +197,7 @@ object Parser {
     }.collect{
       case Some((in, wit)) => (in, wit)
     }.unzip
-    (TxSegWit(version, vIns, vOuts, vWits.toArray, locktime, txhash, segWitHash != txhash, segWitHash, size, vsize), hex)
+    (Tx(version, vIns, vOuts, vWits.toArray, locktime, txhash, segWitHash != txhash, segWitHash, size, vsize), hex)
   }  
 }
 

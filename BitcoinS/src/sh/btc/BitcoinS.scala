@@ -28,11 +28,11 @@ object BitcoinS {
   } catch {case a:Any => false}
   
   def createNonSegWitTxRaw(ins:Seq[TxIn], outs:Seq[TxOut]) = 
-    createNonSegWitTxRawAdvanced(defaultTxVersion, ins, outs, defaultTxLockTime)
+    createNonSegWitTx(defaultTxVersion, ins, outs, defaultTxLockTime)
   
   // wrapper over "Advanced", that uses default version, locktime and sets witnesses to empty 
   def createSegWitTxRaw(ins:Seq[TxIn], outs:Seq[TxOut]):Array[Byte] = 
-    createSegWitTxRawAdvanced(defaultTxVersion, ins.map((_, TxWit(Nil))), outs, defaultTxLockTime)
+    createSegWitTx(defaultTxVersion, ins.map((_, TxWit(Nil))), outs, defaultTxLockTime)
   
   /* // below is another wrapper, commented out because unused (and should never be needed)
   def createSegWitTxRaw(insWits:Seq[(In, Wit)], outs:Seq[Out]) = 

@@ -18,7 +18,8 @@ object TestBlockParser extends App {
   Seq(    
     blk1Vector,
     blk2Vector,
-    blk3Vector
+    blk3Vector,
+    blk4Vector
   ).foreach{
     case (hex, hash, mroot, json, size) =>
       new TestBlockParser(hex, hash, mroot, json, size)
@@ -27,9 +28,9 @@ object TestBlockParser extends App {
 }
 
 object BlockParserTestVectors {
-  //  block too large, so read raw hex from file
+  //  block is around 750 kb, too big to store in code, so read raw hex from file
   val blk1FileRaw = "000000000000000001f942eb4bfa0aeccb6a14c268f4c72d5fff17270da771b9.txt" // from https://blockchain.info/block/000000000000000001f942eb4bfa0aeccb6a14c268f4c72d5fff17270da771b9?format=hex
-  //  block too large, so read json from file
+  //  block is around 750 kb, too big to store in code, so read json from file
   val blk1FileJson = "000000000000000001f942eb4bfa0aeccb6a14c268f4c72d5fff17270da771b9.json.txt" // https://chainquery.com/bitcoin-api/getblock/000000000000000001f942eb4bfa0aeccb6a14c268f4c72d5fff17270da771b9/true
   val blk1Json = Files.readAllLines(new File(blk1FileJson).toPath).mkString
   val blk1Raw = Files.readAllLines(new File(blk1FileRaw).toPath).mkString.trim 
@@ -108,6 +109,37 @@ object BlockParserTestVectors {
   val blk3MRoot = "d236a5a45ddcc90e5f04bd27375f0fe88c4924179b6992a4ce7004393a169f91"
   val blk3Size = 285
     
+  val blk4Raw = "02000000c65a467c95b9bef6c9021193cd974efbd68202021006a51900000000000000000d48586b5e290296f0ef7024f305b9b3a5c1cf24fb902f27ea0335088ef53b8498be91547cdd1b183e1612960101000000010000000000000000000000000000000000000000000000000000000000000000ffffffff5603801b05e4b883e5bda9e7a59ee4bb99e9b1bcfabe6d6d1826d7955e515df6d4587632a80d1fc2bb8c965dc0d9f4417fefb7c328d0bcd6100000000000000000dde1bec70100004d696e6564206279207a6470777370ffffffff0100f90295000000001976a914c825a1ecf2a6830c4401620c3a16f1995057c2ab88ac00000000"
+  val blk4Json = """{
+	"result": {
+		"hash": "00000000000000000429a0c4fbe735b2d8b493daedf0207728543f748c262437",
+		"confirmations": 167955,
+		"strippedsize": 252,
+		"size": 252,
+		"weight": 1008,
+		"height": 334720,
+		"version": 2,
+		"versionHex": "00000002",
+		"merkleroot": "843bf58e083503ea272f90fb24cfc1a5b3b905f32470eff09602295e6b58480d",
+		"tx": [
+			"843bf58e083503ea272f90fb24cfc1a5b3b905f32470eff09602295e6b58480d"
+		],
+		"time": 1418837656,
+		"mediantime": 1418833238,
+		"nonce": 2517767742,
+		"bits": "181bdd7c",
+		"difficulty": 39457671307.13873,
+		"chainwork": "0000000000000000000000000000000000000000000368b0fe25403bc5a713a5",
+		"previousblockhash": "000000000000000019a50610020282d6fb4e97cd931102c9f6beb9957c465ac6",
+		"nextblockhash": "00000000000000001b98a116e9b67465a8fb11ee15c5173ae772d6837e2abb1b"
+	},
+	"error": null,
+	"id": null
+}"""
+  val blk4Hash = "00000000000000000429a0c4fbe735b2d8b493daedf0207728543f748c262437"
+  val blk4MRoot = "843bf58e083503ea272f90fb24cfc1a5b3b905f32470eff09602295e6b58480d"
+  val blk4Size = 252
+  
   val blk1Vector = (
     blk1Raw, // raw hex bytes
     blk1Hash, // expected blk hash
@@ -131,6 +163,15 @@ object BlockParserTestVectors {
     blk3Json,
     blk3Size
   )
+  
+  val blk4Vector = (
+    blk4Raw,
+    blk4Hash,
+    blk4MRoot,
+    blk4Json,
+    blk4Size
+  )
+  
 }
 class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String, size:Long) {  
   val bytes = hex.decodeHex  
@@ -146,6 +187,8 @@ class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String
   val parsedBlk = new BlockParser(bytes).getBlock
 
   assert(parsedBlk.hash == blkHash)
+  val computedMerkleRoot = parsedBlk.computeMerkleRoot.toLowerCase
+  assert(computedMerkleRoot == merkleRoot, s"Expected $merkleRoot. Found $computedMerkleRoot")
   println("Block header hash from first parse passed")
   
   val parsedTxs = parsedBlk.txs
@@ -159,7 +202,7 @@ class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String
   
   parsedTxs zip xtxids foreach{
     case (tx, txid) =>  
-      assert (new TxParserSegWit(tx.serialize).getSegWitTx.txid == txid)      
+      assert (new TxParser(tx.serialize).getTx.txid == txid)      
   }
   println("Txid from second parse passed")  
   
@@ -171,5 +214,5 @@ class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String
   (parsedBytes zip bytes).zipWithIndex.foreach{
     case ((l, r), i) => assert(l == r, s"Left ($l) != Right ($r) at index $i")
   }
-  println
+  println(s"Passed block $blkHash with ${parsedTxs.size} transactions")
 }

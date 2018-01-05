@@ -19,8 +19,7 @@ class PrvKey_P2SH_P2WPKH (bigInt:BigInt, mainNet:Boolean) extends PrvKey(new ECC
   // SEGWIT 3Address
   
   def signTx(rawTx:Array[Byte], whichInputs:Seq[(Int, BigInt)]) = { // which input indices to sign, with amount
-    println("SIGNING SEGWIT TX")
-    val tx = new TxParserSegWit(rawTx).getSegWitTx
+    val tx = new TxParser(rawTx).getTx
     whichInputs.map{
       case (i, value) => 
         val currIn = tx.ins(i) 
@@ -52,7 +51,7 @@ class PrvKey_P2SH_P2WPKH (bigInt:BigInt, mainNet:Boolean) extends PrvKey(new ECC
         val scriptSig = redeemScript.size.toByte +: redeemScript
         tx.ins(i).setScriptSig(scriptSig) // set scriptSig 
     }
-    val raw = createSegWitTxRawAdvanced(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
+    val raw = createSegWitTx(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
     println("raw: "+raw.encodeHex)
     raw
   }

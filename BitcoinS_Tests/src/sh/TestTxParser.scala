@@ -50,7 +50,7 @@ class TxParserTest(hex:String, txid:String, hash:String, vSize:Int) {
   val size = hexSize/2
   val bytes = hex.decodeHex
 
-  val tx = new TxParserSegWit(bytes).getSegWitTx
+  val tx = new TxParser(bytes).getTx
   val txBytes = tx.serialize
   
   assert(tx.vSize == vSize, s"TxVSize. Found: ${tx.vSize}. Expected: ${vSize}")
@@ -67,13 +67,13 @@ class TxParserTest(hex:String, txid:String, hash:String, vSize:Int) {
     case ((l, r), i) => assert(l == r, s"Left ($l) != Right ($r) at index $i")
   }
 
-  val newBytes = createSegWitTxRawAdvanced(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
+  val newBytes = createSegWitTx(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
   assert(newBytes.size == bytes.size)
   (newBytes zip bytes).zipWithIndex.foreach{
     case ((l, r), i) => assert(l == r, s"Left ($l) != Right ($r) at index $i")
   }
   
-  val newTx = new TxParserSegWit(newBytes).getSegWitTx
+  val newTx = new TxParser(newBytes).getTx
   val newTxBytes = newTx.serialize
   assert(newTx.txid == tx.txid, s"Computed txid ${newTx.txid} != ${tx.txid}")
   assert(newTx.segWitTxHash == tx.segWitTxHash)
@@ -266,7 +266,7 @@ object CoreValidTxTestVectors {
       xmls.foreach{xml =>
         val hex = xml.dropRight(1).takeRight(1).text
         val bytes = hex.decodeHex
-        val tx = new TxParserSegWit(bytes).getSegWitTx
+        val tx = new TxParser(bytes).getTx
         val sBytes = tx.serialize
         assert(bytes.size == sBytes.size)
         (sBytes zip bytes).zipWithIndex.foreach{

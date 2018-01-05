@@ -170,22 +170,33 @@ object TestKeyRecovery5 {
     1 to 10 foreach{j =>
       0 to 7 foreach {k => 
         val e = encodeRecoverySigForIndex(k, p - i, p - j)
-        val (k1, i1, j1) = decodeRecoverySig(e)
-        assert(k1 == k)
-        assert(i1 == p - i)
-        assert(j1 == p - j)
+        val (_k, _i, _j) = decodeRecoverySig(e)
+        assert(_k == k)
+        assert(_i == p - i)
+        assert(_j == p - j)
+
+        val int1 = BigInt(sha256Bytes2Bytes(s"$i|$j".getBytes)).abs
+        val int2 = BigInt(sha256Bytes2Bytes(s"$i~$j".getBytes)).abs
+        val e1 = encodeRecoverySigForIndex(k, int1, int2)
+        val (_k1, _int1, _int2) = decodeRecoverySig(e1)
+        assert(_k1 == k)
+        assert(_int1 == int1)
+        assert(_int2 == int2)
+        print(".")        
       }     
     }
   } 
+  println
 }
 
 object TestKeyRecovery6 {
   println("Test 6: [check that recover pubKey returns EXACTLY one public key]")
   val msg = "ABCD"
-  1 to 20 foreach {i =>
+  1 to 10 foreach {i =>
     Seq(true, false).map{compr =>
       Seq(true, false).map{mainNet =>
-        val key = new ECCPrvKey(i, compr)
+        val int = BigInt(sha256Bytes2Bytes(BigInt(i).toByteArray))
+        val key = new ECCPrvKey(int mod n, compr)
         val p2pkhKey = new PrvKey_P2PKH(key, mainNet)
         val address = p2pkhKey.pubKey.address
         val sig = key.signMessageBitcoinD(msg)
@@ -206,15 +217,16 @@ object TestKeyRecovery6 {
 
         assert(valid.size == 1)
         assert(valid.head == address)
+        print(".")
       }
     }
   }
+  println
 
-//  val compressed = true
   val mainNet = true
   1 to 20 foreach {i =>
-    //val eccPrvKey = new ECCPrvKey(i, compressed)
-    val key = new PrvKey_P2SH_P2WPKH(i, mainNet)
+    val int = BigInt(sha256Bytes2Bytes(BigInt(i).toByteArray))
+    val key = new PrvKey_P2SH_P2WPKH(int mod n, mainNet)
     val address = key.pubKey.address
     val eccPrvKey = key.eccPrvKey
         
@@ -235,7 +247,9 @@ object TestKeyRecovery6 {
 
     assert(valid.size == 1)
     assert(valid.head == address, s"Found ${valid.head}. Expected $address")
+    print(".")
   }
+  println
   
 }
 object TestKeyRecovery7 {
@@ -244,7 +258,8 @@ object TestKeyRecovery7 {
   val message = "ABCD"
   1 to 20 foreach {i =>
     Seq(true, false).map{compr =>
-      val key = new ECCPrvKey(n - i, compr)
+      val int = BigInt(sha256Bytes2Bytes(BigInt(i).toByteArray))
+      val key = new ECCPrvKey(int mod n, compr)
       val sig = key.signMessageBitcoinD(message)
       val recovered:ECCPubKey = recoverPubKey(sig.decodeBase64, dsha256(getMessageToSignBitcoinD(message)))
       assert(recovered == key.eccPubKey)
