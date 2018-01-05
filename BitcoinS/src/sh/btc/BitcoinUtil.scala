@@ -272,14 +272,4 @@ Value	Storage length	Format
     val lockTimeBytes = getFixedIntBytes(lockTime, 4) // should be Seq[Byte](0x00, 0x00, 0x00, 0x00)
     versionBytes ++ flagMarkerBytes ++ inCtrBytes ++ inBytes ++ outCtrBytes ++ outBytes ++ witBytes ++ lockTimeBytes
   }.toArray
-
-  def decodeScriptSigPubKey(sigAndPubKey:Seq[Byte]) = {
-    val sigSize = sigAndPubKey(0).toInt
-    val sigBytes = sigAndPubKey.drop(1).take(sigSize)
-    val pubKeySize = sigAndPubKey(sigSize+1).toInt
-    val pubKeyDER = sigAndPubKey.drop(sigSize+2).take(pubKeySize).toArray.encodeHex
-    val sigWhatByte = sigBytes.last
-    val actualSig = sigBytes.init
-    (decodeDERSigBytes(actualSig.toArray), ECCPubKey(pubKeyDER), sigWhatByte)
-  }
 }

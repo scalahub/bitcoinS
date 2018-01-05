@@ -25,11 +25,8 @@ class PrvKey_P2SH_P2WPKH (bigInt:BigInt, mainNet:Boolean) extends PrvKey(new ECC
         val sig = signHash(hash) ++ Array(0x01.toByte) // append a 0x01 to indicate SIGHASH_ALL
         tx.wits(i) = TxWit(Seq(sig, pubKey.bytes))
         // finally set the scriptSig for input script (scriptSig is always a push of redeemScript)
-        val scriptSig = redeemScript.size.toByte +: redeemScript
-        tx.ins(i).setScriptSig(scriptSig) // set scriptSig 
+        tx.ins(i).setScriptSig(redeemScript.size.toByte +: redeemScript) // set scriptSig 
     }
-    val raw = createSegWitTx(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
-    println("raw: "+raw.encodeHex)
-    raw
+    createSegWitTx(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
   }
 }

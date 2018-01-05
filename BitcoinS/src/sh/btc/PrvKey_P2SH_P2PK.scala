@@ -17,7 +17,7 @@ class PrvKey_P2SH_P2PK(eccPrvKey:ECCPrvKey, mainNet:Boolean) extends PrvKey(eccP
   def signTx_P2SH_P2PK(rawTx:Array[Byte], whichInputs:Seq[Int]) = { // which input indices to sign
     val tx = new TxParser(rawTx).getTx // always parse as segwit, since we need to maintain witness data for possible mixed input tx
     whichInputs.map{i => 
-      val txHash = tx.getHashSigned_P2SH_P2PK(i, redeemScript)
+      val txHash = tx.getHashSigned_P2SH_P2PK(i, redeemScript) // redeemScript is [pubKeySize] [pubKey] [checkSig]
       val sigBytes = signHash(txHash) :+ 0x01.toByte // ... and we append a 0x01 to indicate SIGHASH_ALL
       /*  Now set the correct scriptSig (with signature) for the newly signed input
           sigBytes will always be <= 65 bytes: https://bitcoin.stackexchange.com/questions/12554/why-the-signature-is-always-65-13232-bytes-long

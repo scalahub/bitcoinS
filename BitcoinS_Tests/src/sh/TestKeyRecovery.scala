@@ -169,21 +169,20 @@ object TestKeyRecovery5 {
   // test that decoding and encoding works correctly
   1 to 10 foreach {i =>
     1 to 10 foreach{j =>
-      0 to 7 foreach {k => 
-        val e = encodeRecoverySigForIndex(k, p - i, p - j)
+      0 to 7 foreach {recid => 
+        val e = encodeRecoverySigForIndex(recid, p - i, p - j)
         val (_k, _i, _j) = decodeRecoverySig(e)
-        assert(_k == k)
+        assert(_k == recid)
         assert(_i == p - i)
         assert(_j == p - j)
 
-        val int1 = BigInt(sha256Bytes2Bytes(s"$i|$j".getBytes)).abs
-        val int2 = BigInt(sha256Bytes2Bytes(s"$i~$j".getBytes)).abs
-        val e1 = encodeRecoverySigForIndex(k, int1, int2)
+        val int1 = BigInt(sha256Bytes2Bytes(s"$recid#$i#$j".getBytes)).abs
+        val int2 = BigInt(sha256Bytes2Bytes(s"$recid~$i~$j".getBytes)).abs
+        val e1 = encodeRecoverySigForIndex(recid, int1, int2)
         val (_k1, _int1, _int2) = decodeRecoverySig(e1)
-        assert(_k1 == k)
+        assert(_k1 == recid)
         assert(_int1 == int1)
         assert(_int2 == int2)
-        print(".")        
       }     
     }
   } 

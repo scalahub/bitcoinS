@@ -14,7 +14,7 @@ object DataStructures {
   case class TxIn(txHash:String, vOut:Int) {
     var optScriptSig:Option[Seq[Byte]] = None
     def setScriptSig(scriptSig:Seq[Byte]) = {
-      optScriptSig = Some(scriptSig)
+      if (scriptSig.nonEmpty) optScriptSig = Some(scriptSig)
       this
     }
     
@@ -83,31 +83,53 @@ object DataStructures {
       dsha256(bytesToSign)
     }
 
-    def isSigned = ins.indices.forall(i => isInputSigned(i))
+    def isSigned(values:Seq[BigInt], optAddressSeq:Option[Seq[Address]] = None) = {
+      if (ins.size != values.size) throw new Exception("Number of inputs and values must be same. Set to any random value for non-SegWit input")
+      val optAddresses = if (optAddressSeq.isDefined) optAddressSeq.get.map(Some(_)) else Seq.fill(ins.size)(None)
+      if (ins.size != optAddresses.size) throw new Exception("Number of inputs and addresses must be same")
+      values.zip(optAddresses).zipWithIndex.forall{case ((value, optAddress), i) => isInputSigned(i, value, optAddress)}
+    }
     
-    // To do: implement P2SH validation. Currently only validates P2PKH
-    private def isInputSigned(i:Int) = {    
+    private def isInputSigned(i:Int, value:BigInt, optAddress:Option[Address]) = {    
       if (wits(i).data.isEmpty) { // non SegWit Tx
-        // i.e., either P2SH_P2PK or P2PKH. We don't deal with P2SH_P2PK. So can skip for now
-        val ((r, s), eccPubKey, sigWhatByte) = decodeScriptSigPubKey(ins(i).optScriptSig.getOrElse(throw new Exception(s"Input #$i has not been signed")))
+        if (ins(i).optScriptSig.isEmpty) false else {
+          /* p2pkh:     scriptSig is [sigSize][Sig][pubKeySize][pubKey]
+             p2sh_p2pk: scriptSig is [sigSize][Sig][redeemScriptSize][[pubKeySize][pubKey][checkSig]]
+            (i.e., it of the form    [sigSize][Sig][redeemScriptSize][redeemScript], where redeemScript is [pubKeySize][pubKey][checkSig])    */
+          val scriptSig = ins(i).optScriptSig.get
+          val sigSize = scriptSig(0).toInt
+          val sigBytes = scriptSig.drop(1).take(sigSize)
+          val (sigDER, sigHashWhat) = (sigBytes.init.toArray, sigBytes.last)
+          if (sigHashWhat != 0x01.toByte) throw new Exception(s"Require SIGHASH_ALL appended to signature")           
+          
+          val remainingSize = scriptSig(sigSize+1).toInt
+          val remaining = scriptSig.drop(sigSize+2).take(remainingSize).toArray
+          
+          val (point, hash, address) = if (remainingSize == 33 || remainingSize == 65) { // public key (33 is compressed, 65 is uncompressed) 
+            val eccPubKey = ECCPubKey(remaining.encodeHex)
+            val pubKey = new PubKey_P2PKH(eccPubKey, isMainNet)
+            (eccPubKey.point, getHashSigned_P2PKH(i, pubKey.address), pubKey.address)
+          } else { // remaining = redeemScript = [pubKeySize][pubKey][checkSig]
+            if (remaining.last != OP_CheckSig) throw new Exception(s"Invalid scriptSig for input #$i")
+            val eccPubKey = ECCPubKey(remaining.drop(1).take(remaining.head).encodeHex)
+            (eccPubKey.point, getHashSigned_P2SH_P2PK(i, remaining), new PubKey_P2SH_P2PK(eccPubKey, isMainNet).address)
+          }
+          if (optAddress.getOrElse(address) != address) false else {
+            val (r, s) = decodeDERSigBytes(sigDER)
+            point.verify(hash, r, s)
+          }
+        } 
+      } else { // P2SH_P2WPKH
+        val (sig, sigWhatByte) = (wits(i).data(0).init, wits(i).data(0).last)
         if (sigWhatByte != 0x01.toByte) throw new Exception(s"Require SIGHASH_ALL appended to signature") 
-        eccPubKey.point.verify(getHashSigned_P2PKH(i, new PubKey_P2PKH(eccPubKey, isMainNet).address), r, s)
-      } else {
-        // validate SegWit. Returning true for now
-        true
+        val eccPubKey = ECCPubKey(wits(i).data(1).toArray.encodeHex)
+        if (!eccPubKey.compressed) throw new Exception(s"SegWit public keys must be compressed for index $i")
+        val pubKey = new PubKey_P2SH_P2WPKH(eccPubKey.point, isMainNet)
+        if (optAddress.getOrElse(pubKey.address) != pubKey.address) false else {
+          val (r, s) = decodeDERSigBytes(sig.toArray)
+          eccPubKey.point.verify(getHashSigned_P2SH_P2WPKH(i, value, pubKey.doubleHashedPubKeyBytes), r, s)
+        }
       }
-    }
-  
-    def isSignedWithAddresses(inAddresses:Seq[Address]) = {    
-      if (ins.size != inAddresses.size) throw new Exception("Number of inputs and addresses must be same")
-      inAddresses.zipWithIndex.forall{ case (address, i) => isInputSignedWithAddress(i, address)}
-    }
-    
-    // To do: implement P2SH validation. Currently only validates P2PKH
-    private def isInputSignedWithAddress(i:Int, inputAddress:Address) = {    
-      val ((r, s), eccPubKey, sigWhatByte) = decodeScriptSigPubKey(ins(i).optScriptSig.getOrElse(throw new Exception(s"Input #$i has not been signed")))
-      val address = new PubKey_P2PKH(eccPubKey, isMainNet).address
-      if (inputAddress != address) false else eccPubKey.point.verify(getHashSigned_P2PKH(i, address), r, s)
     }
   }
 
