@@ -1,6 +1,7 @@
 package sh
 
-import sh.btc.BitcoinS
+//import sh.btc.BitcoinS
+import sh.btc._
 import sh.ecc._
 import sh.util.BytesUtil._
 import sh.util.StringUtil._

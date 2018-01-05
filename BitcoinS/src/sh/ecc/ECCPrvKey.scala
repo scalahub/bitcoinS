@@ -75,7 +75,7 @@ case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
         If S is too high, simply replace it by S' = 0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE BAAEDCE6 AF48A03B BFD25E8C D0364141 - S. */    
     (r, if (s > sMax) n - s else s)
   }
-  private [ecc] def signHash(hash:Array[Byte]) = {
+  private [sh] def signHash(hash:Array[Byte]) = {
     val (r, s) = signHashGetRS(hash)
     encodeDERSig(r, s)
   }

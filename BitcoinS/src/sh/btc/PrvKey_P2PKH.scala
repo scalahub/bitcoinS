@@ -1,7 +1,8 @@
 
-package sh.ecc
+package sh.btc
 
-import Util._
+import sh.ecc._
+import sh.ecc.Util._
 import sh.btc._
 import sh.btc.BitcoinUtil._
 import sh.btc.DataStructures._
