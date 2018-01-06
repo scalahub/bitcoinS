@@ -188,43 +188,5 @@ object Parser {
 
     tx
   }  
-  def parseTxXML_Orig(txXML:scala.xml.Node) = {
-    val txhash  = (txXML \ "txid").text
-    val version  = (txXML \ "version").text.toInt
-    val segWitHash = (txXML \ "hash").text
-    val locktime = (txXML \ "locktime").text.toLong
-    val size = (txXML \ "size").text.toInt
-    val vsize = (txXML \ "vsize").text.toInt
-    val hex = (txXML \ "hex").text // used for Sanity check below. Remove after testing. 
-    val vOuts = (txXML \ "vout").map{vOut =>
-      val value = BigInt(BitcoinUtil.removeDecimal((vOut \ "value").text))
-      val n = ((vOut \ "n").text).toInt
-      val sp = (vOut \ "scriptPubKey")
-      val outtype =  (sp \ "type").text      
-      val optAddress = if (outtype == "pubkeyhash") { // p2pkh
-        val reqSigs = (sp \ "reqSigs").text.toInt
-        if (reqSigs == 1) { // single signature
-          val address = (sp \ "addresses").text
-          Some(address)
-        } else None
-      } else None
-      TxOut(optAddress, value)
-    }
-    
-    val (vIns, vWits) = (txXML \ "vin").map{vIn =>       
-      if ((vIn \ "txid").nonEmpty) {
-        val wits = (vIn \ "txinwitness").map{w =>
-          w.text.decodeHex.toSeq
-        }
-        Some((TxIn((vIn \ "txid").text, ((vIn \ "vout").text).toInt), TxWit(wits)))        
-      } else None
-    }.collect{
-      case Some((in, wit)) => (in, wit)
-    }.unzip
-    val tx = Tx(version, vIns, vOuts, vWits.toArray, locktime, txhash, segWitHash != txhash, segWitHash, size, vsize)
-    // Sanity check below. Remove after testing
-    assert(hex == tx.serialize.encodeHex, s"Found ${tx.serialize.encodeHex}. Expected $hex")
-    Tx(version, vIns, vOuts, vWits.toArray, locktime, txhash, segWitHash != txhash, segWitHash, size, vsize)
-  }  
 }
 
