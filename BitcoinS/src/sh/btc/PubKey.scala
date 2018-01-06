@@ -7,7 +7,6 @@ import sh.btc.BitcoinS._
 import sh.btc.BitcoinUtil._
 import sh.util.StringUtil._
 
-//class PubKeyX(point:Point, compressed:Boolean) extends PubKey_P2SH_P2WPKH(point, compressed) 
 abstract class PubKey(val eccPubKey:ECCPubKey, val mainNet:Boolean) {
   val address:String
   val bytes = eccPubKey.bytes

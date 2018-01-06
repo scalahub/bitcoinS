@@ -17,7 +17,7 @@ object TestKeyRecovery extends App {
   TestKeyRecovery5
   TestKeyRecovery6
   TestKeyRecovery7
-  println("All tests passed!")
+  println("All KeyRecovery tests passed!")
 }
 object TestKeyRecovery1 {
   println("Test 1: [recover keys using method 1, validate signatures, custom signing method]")
@@ -186,7 +186,6 @@ object TestKeyRecovery5 {
       }     
     }
   } 
-  println
 }
 
 object TestKeyRecovery6 {
@@ -262,10 +261,12 @@ object TestKeyRecovery7 {
       val key = new ECCPrvKey(int mod n, compr)
       val sig = key.signMessageBitcoinD(message)
       val recovered:ECCPubKey = recoverPubKey(sig.decodeBase64, dsha256(getMessageToSignBitcoinD(message)))
-      assert(recovered == key.eccPubKey)
-      
+      assert(recovered == key.eccPubKey)      
       assert(new PubKey_P2PKH(recovered, true).address == new PrvKey_P2PKH(key, true).pubKey.address)
       assert(recovered.point.verifyMessageBitcoinD(message, sig))
     }
+    print(".")
   }
+  println
+  println("Bitcoind sign/verify tests passed")
 }

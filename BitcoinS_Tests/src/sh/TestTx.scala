@@ -10,12 +10,13 @@ import sh.util.BigIntUtil._
 import sh.btc.DataStructures._
 import sh.btc.BitcoinS._
 
-object TestAll extends App {
+object TestAllTx extends App {
   TestCorrectlySpendsP2PKH
   TestSegWit
   TestP2PKH
   TestP2SH_P2PK
   TestMixedOutputs
+  println("Tx creation and signing tests passed")
 }
 object TestCorrectlySpendsP2PKH {
   //8efdf7b84a0f258f0f70dbfb7aba3851ef6f3fefd7958df339a7e3dbce7c4546
@@ -102,8 +103,10 @@ object TestCorrectlySpendsP2PKH {
       val values = tx.ins.map(_ => BigInt(0))
       assert(tx.isSigned(values, Some(inAddresses)) == isAddressValid, "Test 1 failed")
       assert(tx.isSigned(values) == isSigned)
-      println("Test passed for txid: "+tx.txid)
+      print(".")
+      //println("Test passed for txid: "+tx.txid)
   }
+  println
   println("Signature tests passed")
    
 }
@@ -116,12 +119,9 @@ object TestSegWit {
   val p2wpkh_key = new PrvKey_P2SH_P2WPKH(key.bigInt, false) // mainnet is false
   val p2sh_key = new PrvKey_P2SH_P2PK(key, false) // mainnet is false
   val p2pkh_key = new PrvKey_P2PKH(key, false) // mainnet is false
-  println ("Segwit (P2SH-P2WPKH) address: "+p2wpkh_key.pubKey.address) // 2N6nA4btbY23GTQ4RJi3mMGTonzXN7dbphE   (segwit)
-  println ("Non-Segwit (P2SH-P2PK) address: "+p2sh_key.pubKey.address) // 2MwprvB9tUMtX4vK8zJK8K329fNu79CJgR7   (p2sh)
-  println ("Non-Segwit (P2PKH) address: "+p2pkh_key.pubKey.address) // muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1    (p2pkh)
-  assert(p2wpkh_key.pubKey.address == "2N6nA4btbY23GTQ4RJi3mMGTonzXN7dbphE")
-  assert(p2sh_key.pubKey.address == "2MwprvB9tUMtX4vK8zJK8K329fNu79CJgR7")
-  assert(p2pkh_key.pubKey.address == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1")
+  assert(p2wpkh_key.pubKey.address == "2N6nA4btbY23GTQ4RJi3mMGTonzXN7dbphE") // (segwit)
+  assert(p2sh_key.pubKey.address == "2MwprvB9tUMtX4vK8zJK8K329fNu79CJgR7") // (p2sh)
+  assert(p2pkh_key.pubKey.address == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1") // (p2pkh)
   
   // Send some coins to the above addresses. During testing, the following coins were used:
   val in0 = TxIn("0224c8875a43c482c81a508fafc10bd0f084b27b5543c228e48431985f321547", 0) // p2pkh
@@ -157,12 +157,9 @@ object TestSegWit {
   val origHex = "010000000001074715325F983184E428C243557BB284F0D00BC1AF8F501AC882C4435A87C82402000000006A47304402206F2EB176FC6E278B67301628DD16F1F9A5C751E05F8011B65787CB8061C2283002203A701DBC419F2DF11F54AAF59E627318C4DFC8A5873CB1AEF7FBD882543E362F0121039F53E45F8F18B8ED294378BDA342EFF69B2053DEBF27FBEDE7D2D6BD84BE6235FFFFFFFF8B410D8208847C7107DD2C5E22EC07E503D4E1A1608892AE73C1A00504C9BE63000000001716001497ACCE1F07FC7D118F4A0CEA16B72D567F151CB6FFFFFFFFD0D212C7B332DC1808C0FBFBECA3E9B6E03BAA5334D982EFB80225DAF0235ADB000000006B483045022100D97C3EAE660C763C15806C9A0B8B26C87C23378BA4F3A6DEF4C343EFF1F4B5E0022068BAB5B297EB8ACF054A4FCCD99ADD823D5EC27A1F21339CCF60BA460ACFE53E0121039F53E45F8F18B8ED294378BDA342EFF69B2053DEBF27FBEDE7D2D6BD84BE6235FFFFFFFF9A5F08A05235CA9DA5C41FBC0E9551DBB852F273BAC1C59D856968F6C8E3736D000000006D48304502210083161E876C64B1351D49738435C1415FFC963B6B0D0736DE560C691C2CDDF779022016CE4081B19E2D26E5F58B8B8EC343033A78A31EBD83702E323274F23ACF2E1A012321039F53E45F8F18B8ED294378BDA342EFF69B2053DEBF27FBEDE7D2D6BD84BE6235ACFFFFFFFFA4E66EA98F7EF63B76E5E442C47DABBAC07691351DDECFC24CF82009EB66E46C000000006C473044022059F985A704B99EAABBF295767B4154593323B1DA504952DA8B6580A934D2121602206885D8FD5B1AA397FF8C3821944B5C7B87F7A13BE4248F31F6A3A12C8112202F012321039F53E45F8F18B8ED294378BDA342EFF69B2053DEBF27FBEDE7D2D6BD84BE6235ACFFFFFFFF1DAD86D441F80E7AACB0E657965C87D9F2B11BAFCAA37B21D9BDF2156D3D9FB4020000006A47304402207337C6B88C4BC9AA586F7807881BE07AECA37369975832FB6F45993BC1FA6BC902203ECA9744C6DD9B2FE6D0DB3A347CDD04A93FE84CCD279881D60178C041B352670121039F53E45F8F18B8ED294378BDA342EFF69B2053DEBF27FBEDE7D2D6BD84BE6235FFFFFFFF98C7C2089511A8D47CBB9E8B9A68621CF8BE7362958E0C06B334784727FB5DB7000000001716001497ACCE1F07FC7D118F4A0CEA16B72D567F151CB6FFFFFFFF010C6DEB010000000017A914A9974100AEEE974A20CDA9A2F545704A0AB54FDC8700024830450221009F68725D0143B7DBE85FE88930381693ACC66C83380A89F25BEB798F558C175F02205A8C9A15AE1DE018A0CB59DFC69FF6A690475431A28B5A26DAC052D47FA7999B0121039F53E45F8F18B8ED294378BDA342EFF69B2053DEBF27FBEDE7D2D6BD84BE62350000000002483045022100D732A664CBC4C222EAAEAF6BB40E7B2DE50A426E85D2A4C712C4DFAC6FC9501802201D8607360FBB9E6DEF76E69D07F68FC9155CA4B54CC2335D42710145F8AA8DF40121039F53E45F8F18B8ED294378BDA342EFF69B2053DEBF27FBEDE7D2D6BD84BE623500000000"
   val origTxid = "3e1efea9ebc892d3c1d5fbc35fba973b42c819ce85fce74a435a2729674d4f0e"
   val origHash = "596e904f07f3c5deaafdfa0d078c103e50957a804426e0c229775eb4085afeb1"
-  assert(origHex == signed.encodeHex, "Hex signed tx mismatch")
+  assert(origHex.toLowerCase == signed.encodeHex, "Hex signed tx mismatch")
   assert(origTxid == parsed.txid, s"Txid mismatch. Computed ${parsed.txid}. Expected ${origTxid}")
   assert(origHash == parsed.segWitTxHash, s"Hash mismatch. Computed ${parsed.segWitTxHash}. Expected ${origHash}")
-  //println("Hex: "+signed.encodeHex)
-  println("txid: "+parsed.txid) // tx is signed // should print 
-  println("hash: "+parsed.segWitTxHash)  // tx is signed
   /*  Above tx was sent with txID c2e205d632d589b0a8c52fb71d7ecf35e112b241dca4a8e6d6b411764a630a28
       https://www.blocktrail.com/tBTC/tx/c2e205d632d589b0a8c52fb71d7ecf35e112b241dca4a8e6d6b411764a630a28
 
@@ -170,6 +167,8 @@ object TestSegWit {
       Current is as follows:
       txid: 3e1efea9ebc892d3c1d5fbc35fba973b42c819ce85fce74a435a2729674d4f0e
       hash: 596e904f07f3c5deaafdfa0d078c103e50957a804426e0c229775eb4085afeb1  */
+  println("P2SH_P2WPKH input tests passed")
+     
 }
 
 object TestP2PKH { 
@@ -179,8 +178,7 @@ object TestP2PKH {
   val compr = true
   val key = new ECCPrvKey("BB2AC60BC518C0E239D5AF9D8D051A6BDFD0D931268DCA70C59E5992", compr)
   val p2pkhKey = new PrvKey_P2PKH(key, mainNet)
-  println("P2PKH address "+p2pkhKey.pubKey.address) // muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1 
-  assert(p2pkhKey.pubKey.address == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1")
+  assert(p2pkhKey.pubKey.address == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1") 
   // following inputs were used in creating tx (funds were sent to above muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1)
   val in1 = TxIn("56585700f02e26d8d1f71634edbdab74b4eba06abbf55bb918352ed7d4942e0d", 0)
   val in2 = TxIn("5ef0bea6abe1203f8521f61e2040024c39f48f7253df9ee3b919a8513bb01c36", 0)
@@ -191,8 +189,11 @@ object TestP2PKH {
   val tx = createNonSegWitTxRaw(Seq(in1, in2), Seq(out1))
   val signed = p2pkhKey.signTx_P2PKH(tx, Seq(0, 1)) // inputs 0 and 1 are P2PKH inputs
   val parsed = new TxParser(signed).getTx
-  //println("Hex: "+signed.encodeHex)
-  println("txid: "+parsed.txid)
+  // println("Hex: "+signed.encodeHex)
+  assert(parsed.txid == "2e18fad68f103cc013dc7eb46001dbbf3bdc9768273f58a2a80ed51c7cee3b36")
+  assert(parsed.txid == parsed.segWitTxHash)
+  assert(parsed.isSigned(Seq(0, 0)))
+  println("P2PKH input tests passed")
 }
 
 object TestP2SH_P2PK {
@@ -203,10 +204,8 @@ object TestP2SH_P2PK {
   val key = new ECCPrvKey("BB2AC60BC518C0E239D5AF9D8D051A6BDFD0D931268DCA70C59E5992", compr)
   val p2shKey = new PrvKey_P2SH_P2PK(key, mainNet)
   val p2pkhKey = new PrvKey_P2PKH(key, mainNet)
-  println("P2SH_P2PK address "+p2shKey.pubKey.address) //2MwprvB9tUMtX4vK8zJK8K329fNu79CJgR7
   assert(p2shKey.pubKey.address == "2MwprvB9tUMtX4vK8zJK8K329fNu79CJgR7")
   
-  println("P2PKH address "+p2pkhKey.pubKey.address) //muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1
   assert(p2pkhKey.pubKey.address == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1")
   
   // following inputs were used to create tx
@@ -222,12 +221,12 @@ object TestP2SH_P2PK {
   val tx2 = p2pkhKey.signTx_P2PKH(tx1, Seq(1, 2))
   val signed = tx2.encodeHex  
   val parsed = new TxParser(tx2).getTx
-  // println("Hex: "+signed)
-  println("txid: "+parsed.txid)
+  assert(parsed.txid == "491cd5eb0439cf751bb24e81ab8baa9407e7d83819f843581c31c9c9f5c7e3d1")
+  assert(parsed.isSigned(Seq(0, 0, 0)))
+  println("P2SH_P2PK input tests passed")
 }
 
 object TestMixedOutputs {
-  println("Testing that outputs are correctly encoded in tx")
   Seq(true, false).map{mainNet =>
     isMainNet = mainNet
     1 to 10 foreach{i =>
@@ -258,6 +257,9 @@ object TestMixedOutputs {
           assert(o1.optAddress.get == o2.optAddress.get)
           assert(o1.optScriptPubKey.get == o2.optScriptPubKey.get)
       }
+      print(".")
     }
   }
+  println
+  println("Mixed input tests passed")
 }

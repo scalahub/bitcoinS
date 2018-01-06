@@ -24,7 +24,7 @@ object TestBlockParser extends App {
     case (hex, hash, mroot, json, size) =>
       new TestBlockParser(hex, hash, mroot, json, size)
   }
-  println("Block parser tests passed!")
+  println("All block parser tests passed.")
 }
 
 object BlockParserTestVectors {
@@ -189,27 +189,22 @@ class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String
   assert(parsedBlk.hash == blkHash)
   val computedMerkleRoot = parsedBlk.computeMerkleRoot.toLowerCase
   assert(computedMerkleRoot == merkleRoot, s"Expected $merkleRoot. Found $computedMerkleRoot")
-  println("Block header hash from first parse passed")
   
   val parsedTxs = parsedBlk.txs
   val parsedTxids = parsedTxs.map(_.txid) 
 
   assert(xtxids.size == parsedTxids.size)
-  println("Num tx from first parse passed")
 
   xtxids zip parsedTxids foreach{case (left, right) => assert (left == right)}
-  println("Txid from first parse passed")  
   
   parsedTxs zip xtxids foreach{
     case (tx, txid) =>  
       assert (new TxParser(tx.serialize).getTx.txid == txid)      
   }
-  println("Txid from second parse passed")  
   
   val parsedBytes = parsedBlk.serialize
 
   assert(parsedBytes.size == bytes.size)
-  println("Tx bytes from second parse passed")  
   
   (parsedBytes zip bytes).zipWithIndex.foreach{
     case ((l, r), i) => assert(l == r, s"Left ($l) != Right ($r) at index $i")

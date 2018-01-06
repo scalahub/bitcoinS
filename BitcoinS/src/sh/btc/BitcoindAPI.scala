@@ -90,7 +90,7 @@ s"""
   }
 
   
-  def getBlockSummary(blockHash:String):BitcoindBlockSummary = {
+  def getBlockSummary(blockHash:String):BlkSummary = {
     val xml = CurlJsonData.curlXML(
       rpcHost, 
       s"""{"method":"getblock","params":["$blockHash"],"id":$id,"jsonrpc":"1.0"}"""
@@ -99,10 +99,10 @@ s"""
     val prevBlkHash =  (xml \\ "previousblockhash").text
     val version =  (xml \\ "version").text.toLong
     val time = (xml \\ "time").text.toLong * 1000
-    new BitcoindBlockSummary(blockHash, prevBlkHash, time, version, txHashes)
+    new BlkSummary(blockHash, prevBlkHash, time, version, txHashes)
   }
 
-  def getBlock(blockHash:String):BitcoindBlock = {
+  def getBlock(blockHash:String):Blk = {
     val xml = CurlJsonData.curlXML(
       rpcHost, 
       s"""{"method":"getblock","params":["$blockHash", 2],"id":$id,"jsonrpc":"1.0"}"""
@@ -113,8 +113,8 @@ s"""
     val nBits = (xml \\ "bits").text.decodeHex
     val nonce = (xml \\ "nonce").text.toLong
     val time = (xml \\ "time").text.toLong * 1000
-    val (txs, hexTxs) = (xml \\ "result" \\ "tx").map(Parser.parseTxXML).unzip
-    BitcoindBlock(blockHash, prevBlkHash, time, version, txs, hexTxs, merkleRoot, nBits, nonce)
+    val txs = (xml \\ "result" \\ "tx").map(Parser.parseTxXML)
+    Blk(blockHash, prevBlkHash, time, version, txs, merkleRoot, nBits, nonce)
   }
   
   def getBestBlockHash = {
@@ -165,13 +165,37 @@ s"""
 
 object Parser {
   def parseTxXML(txXML:scala.xml.Node) = {
+    
+    val hex = (txXML \ "hex").text // used for Sanity check below. Remove after testing. 
+    val tx = new TxParser(hex.decodeHex).getTx
+
+    assert(tx.serialize.encodeHex == hex, s"Computed hex: {tx.serialize.encodeHex}. Bitcoind reported: $hex") 
+    // following for testing implementation of parser. Not used otherwise
+    val txid  = (txXML \ "txid").text
+    val segWitTxHash = (txXML \ "hash").text
+    val version  = (txXML \ "version").text.toInt
+    val locktime = (txXML \ "locktime").text.toLong
+    val size = (txXML \ "size").text.toInt
+    val vsize = (txXML \ "vsize").text.toInt
+
+    assert(tx.txid == txid, s"Computed txid: {tx.txid}. Bitcoind reported: $txid")
+    assert(tx.segWitTxHash == segWitTxHash, s"Computed txid: {tx.segWitTxHash}. Bitcoind reported: $segWitTxHash")
+    assert(segWitTxHash != txid == tx.isSegWit, s"isSegWit: ($segWitTxHash != $txid) != ${tx.isSegWit}")
+    assert(version == tx.version, s"Bitcoind version: $version != ${tx.version}")
+    assert(locktime == tx.lockTime, s"Bitcoind locktime: $locktime != ${tx.lockTime}")
+    assert(size == tx.size, s"Bitcoind size: $size != {tx.size}")
+    assert(vsize == tx.vSize, s"Bitcoind vsize: $vsize != {tx.vSize}")
+
+    tx
+  }  
+  def parseTxXML_Orig(txXML:scala.xml.Node) = {
     val txhash  = (txXML \ "txid").text
     val version  = (txXML \ "version").text.toInt
     val segWitHash = (txXML \ "hash").text
     val locktime = (txXML \ "locktime").text.toLong
     val size = (txXML \ "size").text.toInt
     val vsize = (txXML \ "vsize").text.toInt
-    val hex = (txXML \ "hex").text 
+    val hex = (txXML \ "hex").text // used for Sanity check below. Remove after testing. 
     val vOuts = (txXML \ "vout").map{vOut =>
       val value = BigInt(BitcoinUtil.removeDecimal((vOut \ "value").text))
       val n = ((vOut \ "n").text).toInt
@@ -197,7 +221,10 @@ object Parser {
     }.collect{
       case Some((in, wit)) => (in, wit)
     }.unzip
-    (Tx(version, vIns, vOuts, vWits.toArray, locktime, txhash, segWitHash != txhash, segWitHash, size, vsize), hex)
+    val tx = Tx(version, vIns, vOuts, vWits.toArray, locktime, txhash, segWitHash != txhash, segWitHash, size, vsize)
+    // Sanity check below. Remove after testing
+    assert(hex == tx.serialize.encodeHex, s"Found ${tx.serialize.encodeHex}. Expected $hex")
+    Tx(version, vIns, vOuts, vWits.toArray, locktime, txhash, segWitHash != txhash, segWitHash, size, vsize)
   }  
 }
 

@@ -17,6 +17,7 @@ object TestECC extends App {
   testTvs(TestVectorsECC2.s, true)
   println("Testing EC addititon and commutativity")
   1 to 100 foreach {i =>
+    print(".")
     val a = randInt(32) mod n
     val b = randInt(32) mod n
     val c = a + b
@@ -30,10 +31,10 @@ object TestECC extends App {
     assert(R == Q + P)
     assert((n - a) * G == -P)
     assert((n - b) * G == -Q)
-    assert(((n - c) mod n) * G == -R)
-    
+    assert(((n - c) mod n) * G == -R)    
   }
-  println("All tests passed!")
+  println
+  println("All ECC tests passed!")
   def randInt(numBytes:Int) = {
     val bytes = Array.fill(numBytes)(0x00.toByte)
     scala.util.Random.nextBytes(bytes)

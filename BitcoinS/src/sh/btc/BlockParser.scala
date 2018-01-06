@@ -25,7 +25,5 @@ class BlockParser(bytes:Array[Byte]) extends TxParser (bytes) {
   lazy val txs:Seq[Tx] = 1 to getCompactInt map (_ => getTx) // first getCompactInt returns numTx
   
   // https://bitcoin.org/en/developer-reference#raw-transaction-format        
-  lazy val getBlock = BitcoindBlock(
-    currBlockHash, prevBlockHash, time, version, txs, txs.map(_.serialize.encodeHex), merkleRootHash, nBits, nonce
-  )
+  lazy val getBlock = Blk(currBlockHash, prevBlockHash, time, version, txs, merkleRootHash, nBits, nonce)
 }

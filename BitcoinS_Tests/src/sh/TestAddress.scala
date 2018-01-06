@@ -22,5 +22,5 @@ object TestAddress extends App {
   assertBitcoin("1Q1pE5vPGEEMqRcVRMbtBK842Y6Pzo6nJ9", false);
   assertBitcoin("1AGNa15ZQXAZUgFiqJ2i7Z2DPU2J6hW62I", false);
     
-  println("Address valid tests passed")
+  println("Address isValid tests passed")
 }

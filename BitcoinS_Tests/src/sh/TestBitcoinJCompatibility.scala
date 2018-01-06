@@ -26,10 +26,11 @@ object TestBitcoinJCompatibility extends App {
       val jAddr = jKey.toAddress(jNetParam).toString
       assert(sKey.pubKey.eccPubKey.hex.toLowerCase == jKey.getPublicKeyAsHex.toLowerCase, s"Key mismatch for int $int")
       assert(sAddr == jAddr, sAddr+" != "+jAddr)
-      //println("address test pass: "+sAddr+" == "+jAddr)
+      print(".")
     }
   }
+  println
+  println("All BitcoinJ private key from int compatibility tests passed")
   def getKeyFromInt(int: java.math.BigInteger, compressed:Boolean) = new PrvKey_P2PKH(ECCPrvKey(int, compressed), isMainNet)
   def getJNetParams = if (isMainNet) new MainNetParams else new TestNet3Params
-  println("BitcoinJ private key from int compatibility tests passed")
 }

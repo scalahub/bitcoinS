@@ -127,12 +127,12 @@ object TestRFC6979 extends App {
     assert (eccPrvKey.sign(htv.msg).toLowerCase == htv.sigDER.toLowerCase)
     assert (PrvKey.getPrvKeyP2PKH(htv.keyWIF).eccPrvKey == eccPrvKey)
     assert (new PrvKey_P2PKH(eccPrvKey, true).getWIF == htv.keyWIF)
-    println("Test passed for: "+htv.msg)
   }
+  println("All RFC6979 test vectors set #1 passed")
 }
 import sh.ecc.Util._
 import sh.util._
-object GenerateTestVectors extends App {
+object Generate_RFC6979_TestVectors extends App {
   val msgs = """Absence makes the heart grow fonder.
 Actions speak louder than words.
 All for one and one for all.
@@ -382,22 +382,23 @@ You win some, you lose some.""".lines.map(_.trim).toArray
   // above prints the data for sharing with others. Below does the actual test.
 }
 
-object ValidateTestVectors extends App {
+object Validate_RFC6979_TestVectors extends App {
   import PreviousVectors._
   val tvs = Seq(tv1, tv2, tv3, tv4, tv5, tv6, tv7, tv8, tv9, tv10, tv11, tv12)
   val x = tvs.flatMap{tv => 
+    print(".")
     tv.lines.map{line =>
       val a = line.split(",")
       val k = BigInt(a(0).drop(1))
-      val s = a.last.dropRight(1)
+      val s = a.last.dropRight(1).toLowerCase
       val m = a.drop(1).dropRight(1).reduceLeft(_+","+_)
       val key = new ECCPrvKey(k, true)
       val es = key.sign(m)
       require(es == s)
-      println(s"Passed test for $m")
     }
   }
-  println("All tests passed")
+  println
+  println("All RFC6979 test vectors set #2 passed")
 
   
 }

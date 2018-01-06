@@ -115,6 +115,7 @@ MySig: IAjLYjtaScVd1haZiSfnDS/yQyy1RUXpB/Yug9YHaiaKLXI8ihHe3PGDZB2YIAJP6ivfpwBXr
   val mainNet = true
   val testStrs = str.lines.map(_.trim).filterNot(_.isEmpty).grouped(5)
   testStrs.foreach{seq =>
+    print(".")
     val _prvKeyInt = seq(0).drop("Private as int ".size).trim
     val _addr = seq(1).drop("Public address ".size).trim
     val _msg = seq(2).drop("Message: ".size).trim
@@ -123,7 +124,6 @@ MySig: IAjLYjtaScVd1haZiSfnDS/yQyy1RUXpB/Yug9YHaiaKLXI8ihHe3PGDZB2YIAJP6ivfpwBXr
     val _deterSigStr = seq(4).drop("MySig: ".size).trim
     val _deterSig = _deterSigStr.decodeBase64
    
-//    val eccPrvKey = new ECCPrvKey(BigInt(_prvKeyInt), compressed)
     val prvKey = new PrvKey_P2PKH(new ECCPrvKey(BigInt(_prvKeyInt), compressed), mainNet)
     val hash = dsha256(getMessageToSignBitcoinD(_msg))
     val addr = prvKey.pubKey.address
@@ -146,5 +146,6 @@ MySig: IAjLYjtaScVd1haZiSfnDS/yQyy1RUXpB/Yug9YHaiaKLXI8ihHe3PGDZB2YIAJP6ivfpwBXr
     //    println("Det Sig "+_deterSigStr)
     //    println("Our Sig "+ourSigStr)
   }
-  println("All tests passed!")
+  println
+  println("All Compressed pub key tests passed!")
 }

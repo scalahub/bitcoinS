@@ -106,10 +106,12 @@ object DataStructures {
           val remaining = scriptSig.drop(sigSize+2).take(remainingSize).toArray
           
           val (point, hash, address) = if (remainingSize == 33 || remainingSize == 65) { // public key (33 is compressed, 65 is uncompressed) 
+            // its a P2PKH input
             val eccPubKey = ECCPubKey(remaining.encodeHex)
             val pubKey = new PubKey_P2PKH(eccPubKey, isMainNet)
             (eccPubKey.point, getHashSigned_P2PKH(i, pubKey.address), pubKey.address)
           } else { // remaining = redeemScript = [pubKeySize][pubKey][checkSig]
+            // its a P2SH_P2PL input (or some other P2SH input, but we only support P2SH_P2PK and P2SH_P2WPKH -- see below)
             if (remaining.last != OP_CheckSig) throw new Exception(s"Invalid scriptSig for input #$i")
             val eccPubKey = ECCPubKey(remaining.drop(1).take(remaining.head).encodeHex)
             (eccPubKey.point, getHashSigned_P2SH_P2PK(i, remaining), new PubKey_P2SH_P2PK(eccPubKey, isMainNet).address)
@@ -119,7 +121,7 @@ object DataStructures {
             point.verify(hash, r, s)
           }
         } 
-      } else { // P2SH_P2WPKH
+      } else { // P2SH_P2WPKH, SegWit input
         val (sig, sigWhatByte) = (wits(i).data(0).init, wits(i).data(0).last)
         if (sigWhatByte != 0x01.toByte) throw new Exception(s"Require SIGHASH_ALL appended to signature") 
         val eccPubKey = ECCPubKey(wits(i).data(1).toArray.encodeHex)
@@ -134,12 +136,12 @@ object DataStructures {
   }
 
   
-  class BitcoindBlockSummary(hash:String, prevBlockHash:String, time:Long, version:Long, txHashes:Seq[String]) 
+  class BlkSummary(hash:String, prevBlockHash:String, time:Long, version:Long, txHashes:Seq[String]) 
   
-  case class BitcoindBlock(
-    hash:String, prevBlockHash:String, time:Long, version:Long, txs:Seq[Tx], hexTxs:Seq[String],
+  case class Blk(
+    hash:String, prevBlockHash:String, time:Long, version:Long, txs:Seq[Tx],
     merkleRoot:String, nBits:Seq[Byte], nonce:Long
-  ) extends BitcoindBlockSummary(hash, prevBlockHash, time, version, txs.map(_.txid)) {
+  ) extends BlkSummary(hash, prevBlockHash, time, version, txs.map(_.txid)) {
     if (nBits.size != 4) throw new Exception("NBits must be exactly 4 bytes")
     def serialize = {
       // block is serialized as header + numTxs + txs
@@ -150,10 +152,9 @@ object DataStructures {
       val prevBlockHashBytes = toggleEndianString(prevBlockHash)
       val merkleRootBytes = toggleEndianString(merkleRoot)
       val txBytes = txs.flatMap(_.serialize)
-      val txBytesFromHex = hexTxs.flatMap(_.decodeHex)
       val numTxBytes = getVarIntBytes(txs.size)
       val header = versionBytes ++ prevBlockHashBytes++merkleRootBytes ++ timeBytes ++ nBits ++ nonceBytes
-      val blk = header ++ numTxBytes ++ txBytesFromHex
+      val blk = header ++ numTxBytes ++ txBytes
       blk
     }
     def computeMerkleRoot = {
@@ -175,7 +176,7 @@ object DataStructures {
           val newCurrRow = if (currRow.size.isEven) currRow else currRow :+ currRow.last
           currRow = newCurrRow.grouped(2).toSeq.map(a => dsha256(a(0) ++ a(1)))
         }
-        currRow(0).reverse.encodeHex.toLowerCase
+        currRow(0).reverse.encodeHex
       }
     }    
   }  

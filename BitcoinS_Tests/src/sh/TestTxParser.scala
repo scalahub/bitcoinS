@@ -42,7 +42,7 @@ object TxParserTest extends App {
       new TxParserTest(hex, txid, hash, vSize)
   }
   CoreValidTxTestVectors
-  println("All tx parser tests passed!")
+  println("Tx parser tests passed!")
 }
 class TxParserTest(hex:String, txid:String, hash:String, vSize:Int) {
   val hexSize = hex.size
@@ -80,7 +80,7 @@ class TxParserTest(hex:String, txid:String, hash:String, vSize:Int) {
   assert(newTx.size == tx.size)
   assert(newTx.version == tx.version)
   assert(newTx.vSize == tx.vSize)
-  println(s"Tx test passed for $txid "+(if (newTx.isSegWit) "(SegWit)" else ""))
+  //println(s"Tx test passed for $txid "+(if (newTx.isSegWit) "(SegWit)" else ""))
 }
 object TxParserTestVectors {
   val coinBaseTx = (// coinbase tx
@@ -273,10 +273,8 @@ object CoreValidTxTestVectors {
           case ((sB, b), i) =>
             assert(sB == b, s"Byte mismatch at index $i. Expected $b, found $sB")
         }
-        println("Passed: "+tx.txid)    
       }
-      println
-      println("All tests passed")
   }
+  println("Core test vectors passed")
 }
 

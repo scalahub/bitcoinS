@@ -139,7 +139,7 @@ private [sh] object BitcoinUtil {
   
   def hash160(bytes:Seq[Byte]) = ripeMD160(sha256Bytes2Bytes(bytes.toArray))
   
-  def getHashed(bytes:Seq[Byte]) = dsha256(bytes.toArray).reverse.encodeHex.toLowerCase
+  def getHashed(bytes:Seq[Byte]) = dsha256(bytes.toArray).reverse.encodeHex
   
   def getAddrFromOutScript(outScript:Array[Byte]) = {
     // if its a simple pay to address (OP_DUP OP_HASH160 OP_PUSHDATXX)
