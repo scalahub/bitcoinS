@@ -19,7 +19,7 @@ case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
   val bytes = hex.decodeHex 
   
   
-  // returns (k, r) in a deterministic way from hash. Requires that hash is already input as SHA256(msg)
+  // returns (k, r) in a deterministic way from hash. Requires that hash is already input as 256 bit value, possibly dsha256(msg) 
   // Follows: https://tools.ietf.org/html/rfc6979
   private def getDeterministicKRFromHash(hash:Array[Byte]) = {
     if (hash.size != 32) throw new Exception("Hash must be 32 bytes")

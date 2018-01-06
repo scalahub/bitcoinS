@@ -221,6 +221,7 @@ object TestP2SH_P2PK {
   val tx2 = p2pkhKey.signTx_P2PKH(tx1, Seq(1, 2))
   val signed = tx2.encodeHex  
   val parsed = new TxParser(tx2).getTx
+  assert(parsed.outs(0).optAddress.get == "2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF")
   assert(parsed.txid == "491cd5eb0439cf751bb24e81ab8baa9407e7d83819f843581c31c9c9f5c7e3d1")
   assert(parsed.isSigned(Seq(0, 0, 0)))
   println("P2SH_P2PK input tests passed")

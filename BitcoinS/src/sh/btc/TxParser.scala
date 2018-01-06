@@ -46,7 +46,7 @@ class TxParser(bytes:Array[Byte]) extends AbstractParser(bytes) {
     } else { // non-segwit tx
       val (ins, inBytes) = usingBytes(getTxIns)
       val (outs, outBytes) = usingBytes(getTxOuts)
-      (ins, outs, Nil, ins.map(in => TxWit(Nil)), inBytes, outBytes, Nil)
+      (ins, outs, Nil, ins.map(_ => TxWit(Nil)), inBytes, outBytes, Nil)
     }
     val (lockTime, lockTimeBytes) = usingBytes(getNext4UInt) // unsigned
     val classicRaw = versionBytes ++ inBytes ++ outBytes ++ lockTimeBytes

@@ -46,22 +46,46 @@ object DataStructures {
       val (scriptPubKey, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(inputAddress)
       if (isMainNetAddr != isMainNet) throw new Exception(s"MainNet mismatch between address and current setting") 
       emptyIns(whichInput).setScriptSig(scriptPubKey)    
-      val bytesToSign = createNonSegWitTx(version, emptyIns, outs, lockTime) ++ sigHashAllBytes // important ! in P2PKH (nonSegwit), we need to sign old transaction serialized bytes
-      dsha256(bytesToSign)
+      dsha256(createNonSegWitTx(version, emptyIns, outs, lockTime) ++ sigHashAllBytes) // important ! in P2PKH (nonSegwit), we need to sign old transaction serialized bytes
+    }
+    
+    @deprecated("Used only for BCH. Not a part of Bitcoin", "07 Jan 2018")
+    def getHashSigned_P2PKH_UASF(whichInput:Int, inputAddress:String, value:BigInt) = { // which input indices to sign, with amount. Last param is pubKeyHashed via RIPEMD160(SHA256(_))
+      val currIn = ins(whichInput) 
+      val nVer = getFixedIntBytes(version, 4) // signed As per rules
+      val hashPrevOuts = dsha256(ins.flatMap(in => in.txHash.decodeHex.reverse ++ getFixedIntBytes(in.vOut, 4)))  // vOut is signed
+      val hashSeq = dsha256(ins.flatMap(in => getFixedIntBytes(in.seqNum, 4))) // unsigned
+      val outPoint = currIn.txHash.decodeHex.reverse ++ getFixedIntBytes(BigInt(currIn.vOut), 4)                
+
+      val (scriptPubKey, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(inputAddress)
+      if (isMainNetAddr != isMainNet) throw new Exception(s"MainNet mismatch between address and current setting") 
+
+      val scriptCode = scriptPubKey.size.toByte +: scriptPubKey
+      val amt = getFixedIntBytes(value, 8) // unsigned
+      val nSeq = getFixedIntBytes(currIn.seqNum, 4) // unsigned
+      val hashOuts = dsha256(
+        outs.flatMap(out =>
+          getFixedIntBytes(out.value, 8) ++ out.optScriptPubKey.map{scriptPubKey =>
+            getVarIntBytes(scriptPubKey.size) ++ scriptPubKey
+          }.getOrElse(Seq(0x00.toByte))
+        )
+      )
+      val nLockTime = getFixedIntBytes(lockTime, 4)        
+      val nHashType = sigHashAll_UAHF_Bytes 
+      dsha256(nVer ++ hashPrevOuts ++ hashSeq ++ outPoint ++ scriptCode ++ amt ++ nSeq ++ hashOuts ++ nLockTime ++ nHashType)
     }
 
     // https://bitcoin.stackexchange.com/a/37095/2075    
     def getHashSigned_P2SH_P2PK(whichInput:Int, redeemScript:Seq[Byte]) = {
       val emptyIns = ins.map(in => new TxIn(in.txHash, in.vOut)) // empty = remove all scriptSigs (default is None)
       emptyIns(whichInput).setScriptSig(redeemScript)      
-      val bytesToSign = createNonSegWitTx(version, emptyIns, outs, lockTime) ++ sigHashAllBytes // this tx is appended with 01000000 (sigHashAll) ... // important !! in P2SH (nonSegwit), we need to sign old transaction serialized bytes
-      dsha256(bytesToSign) // ... and its double hash is signed     
+      dsha256(createNonSegWitTx(version, emptyIns, outs, lockTime) ++ sigHashAllBytes ) // this tx is appended with 01000000 (sigHashAll) ... // important !! in P2SH (nonSegwit), we need to sign old transaction serialized bytes ... and its double hash is signed     
     }
 
     private val p2sh_p2wpkh_ScriptCode_Prefix = "1976a914".decodeHex
     private val p2sh_p2wpkh_ScriptCode_Suffix = "88ac".decodeHex
 
-    def getHashSigned_P2SH_P2WPKH(whichInput:Int, value:BigInt, hash160PubKey:Seq[Byte]) = { // which input indices to sign, with amount
+    def getHashSigned_P2SH_P2WPKH(whichInput:Int, value:BigInt, hash160PubKey:Seq[Byte]) = { // which input indices to sign, with amount. Last param is pubKeyHashed via RIPEMD160(SHA256(_))
       val currIn = ins(whichInput) 
       val nVer = getFixedIntBytes(version, 4) // signed As per rules
       val hashPrevOuts = dsha256(ins.flatMap(in => in.txHash.decodeHex.reverse ++ getFixedIntBytes(in.vOut, 4)))  // vOut is signed
@@ -79,8 +103,7 @@ object DataStructures {
       )
       val nLockTime = getFixedIntBytes(lockTime, 4)        
       val nHashType = sigHashAllBytes 
-      val bytesToSign = nVer ++ hashPrevOuts ++ hashSeq ++ outPoint ++ scriptCode ++ amt ++ nSeq ++ hashOuts ++ nLockTime ++ nHashType
-      dsha256(bytesToSign)
+      dsha256(nVer ++ hashPrevOuts ++ hashSeq ++ outPoint ++ scriptCode ++ amt ++ nSeq ++ hashOuts ++ nLockTime ++ nHashType)
     }
 
     def isSigned(values:Seq[BigInt], optAddressSeq:Option[Seq[Address]] = None) = {
@@ -90,13 +113,13 @@ object DataStructures {
       values.zip(optAddresses).zipWithIndex.forall{case ((value, optAddress), i) => isInputSigned(i, value, optAddress)}
     }
     
-    private def isInputSigned(i:Int, value:BigInt, optAddress:Option[Address]) = {    
-      if (wits(i).data.isEmpty) { // non SegWit Tx
-        if (ins(i).optScriptSig.isEmpty) false else {
+    private def isInputSigned(index:Int, value:BigInt, optAddress:Option[Address]) = {    
+      if (wits(index).data.isEmpty) { // non SegWit Tx
+        if (ins(index).optScriptSig.isEmpty) false else {
           /* p2pkh:     scriptSig is [sigSize][Sig][pubKeySize][pubKey]
              p2sh_p2pk: scriptSig is [sigSize][Sig][redeemScriptSize][[pubKeySize][pubKey][checkSig]]
             (i.e., it of the form    [sigSize][Sig][redeemScriptSize][redeemScript], where redeemScript is [pubKeySize][pubKey][checkSig])    */
-          val scriptSig = ins(i).optScriptSig.get
+          val scriptSig = ins(index).optScriptSig.get
           val sigSize = scriptSig(0).toInt
           val sigBytes = scriptSig.drop(1).take(sigSize)
           val (sigDER, sigHashWhat) = (sigBytes.init.toArray, sigBytes.last)
@@ -109,33 +132,26 @@ object DataStructures {
             // its a P2PKH input
             val eccPubKey = ECCPubKey(remaining.encodeHex)
             val pubKey = new PubKey_P2PKH(eccPubKey, isMainNet)
-            (eccPubKey.point, getHashSigned_P2PKH(i, pubKey.address), pubKey.address)
+            (eccPubKey.point, getHashSigned_P2PKH(index, pubKey.address), pubKey.address)
           } else { // remaining = redeemScript = [pubKeySize][pubKey][checkSig]
             // its a P2SH_P2PL input (or some other P2SH input, but we only support P2SH_P2PK and P2SH_P2WPKH -- see below)
-            if (remaining.last != OP_CheckSig) throw new Exception(s"Invalid scriptSig for input #$i")
+            if (remaining.last != OP_CheckSig) throw new Exception(s"Invalid scriptSig for input #$index")
             val eccPubKey = ECCPubKey(remaining.drop(1).take(remaining.head).encodeHex)
-            (eccPubKey.point, getHashSigned_P2SH_P2PK(i, remaining), new PubKey_P2SH_P2PK(eccPubKey, isMainNet).address)
+            (eccPubKey.point, getHashSigned_P2SH_P2PK(index, remaining), new PubKey_P2SH_P2PK(eccPubKey, isMainNet).address)
           }
-          if (optAddress.getOrElse(address) != address) false else {
-            val (r, s) = decodeDERSigBytes(sigDER)
-            point.verify(hash, r, s)
-          }
+          if (optAddress.getOrElse(address) != address) false else point.verify(hash, decodeDERSigBytes(sigDER))
         } 
       } else { // P2SH_P2WPKH, SegWit input
-        val (sig, sigWhatByte) = (wits(i).data(0).init, wits(i).data(0).last)
+        val (sig, sigWhatByte) = (wits(index).data(0).init, wits(index).data(0).last)
         if (sigWhatByte != 0x01.toByte) throw new Exception(s"Require SIGHASH_ALL appended to signature") 
-        val eccPubKey = ECCPubKey(wits(i).data(1).toArray.encodeHex)
-        if (!eccPubKey.compressed) throw new Exception(s"SegWit public keys must be compressed for index $i")
+        val eccPubKey = ECCPubKey(wits(index).data(1).toArray.encodeHex)
+        if (!eccPubKey.compressed) throw new Exception(s"SegWit public keys must be compressed for index $index")
         val pubKey = new PubKey_P2SH_P2WPKH(eccPubKey.point, isMainNet)
-        if (optAddress.getOrElse(pubKey.address) != pubKey.address) false else {
-          val (r, s) = decodeDERSigBytes(sig.toArray)
-          eccPubKey.point.verify(getHashSigned_P2SH_P2WPKH(i, value, pubKey.doubleHashedPubKeyBytes), r, s)
-        }
+        if (optAddress.getOrElse(pubKey.address) != pubKey.address) false else eccPubKey.point.verify(getHashSigned_P2SH_P2WPKH(index, value, pubKey.doubleHashedPubKeyBytes), decodeDERSigBytes(sig.toArray))
       }
     }
   }
 
-  
   class BlkSummary(hash:String, prevBlockHash:String, time:Long, version:Long, txHashes:Seq[String]) 
   
   case class Blk(

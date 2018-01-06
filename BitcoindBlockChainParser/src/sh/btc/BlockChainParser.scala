@@ -9,6 +9,7 @@ import sh.btc.DataStructures._
 import sh.util.FileUtil._
 
 trait BlockChainParser {
+  var debug = false
   val watchAddress:Set[Address] // addresses for which we need to scan blockchain
   println(s"Loaded ${watchAddress.size} address to watch")
   var validUTXO = Map[TxIn, (Address, Amount)]()
@@ -70,10 +71,14 @@ trait BlockChainParser {
           currBlockByte = -1
           endBlockByte = -1
           if (isInterestingBlock && validMagicBytes) {
-            new BlockParser(blockBytes.toArray).txs.foreach{tx =>
-              //if (debug) tx.printTx
-              if (debug) println("Tx  "+tx.txid)
-              
+            val blk = new BlockParser(blockBytes.toArray).getBlock
+            val computedMerkleRoot = blk.computeMerkleRoot
+            //if (debug) print("parsed blk: "+blk.hash+" ")
+            if (debug) print(".")
+            assert(blk.merkleRoot == computedMerkleRoot, s"Merkle root mismatch. Computed: $computedMerkleRoot. Required: ${blk.merkleRoot}")
+            // if (debug) println("with merkle root: "+computedMerkleRoot)
+            blk.txs.foreach{tx =>
+              // if (debug) println("Tx  "+tx.txid)              
               val hash = tx.txid
               tx.outs.zipWithIndex.map{case (out, i) =>
                 out.optAddress.map{address =>
@@ -82,24 +87,13 @@ trait BlockChainParser {
               }
               tx.ins.foreach(in => if (in.vOut >= 0) validUTXO -= in)
             }
-            //  // use below code block to parse segwit tx (commented as not needed now)
-            //  new BlockParser(blockBytes.toArray).segWitTxs.foreach{tx =>
-            //    if (debug) println("Tx  "+tx.txid)
-            //    if (debug) println("sTx "+tx.segWitTxHash)
-            //    val hash = tx.txid
-            //    tx.outs.zipWithIndex.map{case (out, i) =>
-            //      out.optAddress.map{address =>
-            //        if (watchAddress.contains(address)) validUTXO += new In(hash, i) -> ((address, out.value))
-            //      }
-            //    }
-            //    tx.ins.foreach(in => if (in.vOut >= 0) validUTXO -= in)
-            //  }
           }
           optHeader = None
           blockBytes.clear
           isInterestingBlock = true // set to true for next iteration, to extract timestamp
         } 
       }
+      if (debug) println
     }
   }
   def main(a:Array[String]):Unit = if (a.size >= 3) {

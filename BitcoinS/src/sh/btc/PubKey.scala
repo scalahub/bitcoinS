@@ -19,7 +19,7 @@ class PubKey_P2PKH(eccPubKey:ECCPubKey, mainNet:Boolean) extends PubKey(eccPubKe
       https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
       https://bitcoin.stackexchange.com/a/3839/2075
       https://en.bitcoin.it/wiki/Base58Check_encoding#Version_bytes  */
-  lazy val redeemScript = Nil
+  lazy val redeemScript = Nil // should not be needed for P2PKH
   lazy val address = {
     val hash = doubleHashedPubKeyBytes 
     val addrBytes = if (mainNet) 0x00.toByte +: hash else 111.toByte +: hash
@@ -46,7 +46,6 @@ class PubKey_P2SH_P2PK(eccPubKey:ECCPubKey, mainNet:Boolean) extends PubKey(eccP
   }
 }
 class PubKey_P2SH_P2WPKH (point:Point, mainNet:Boolean) extends PubKey(ECCPubKey(point, true), mainNet) {
-  if (!eccPubKey.compressed) throw new Exception("[PubKey] SegWit requires compressed key")
   lazy val redeemScript:Seq[Byte] = "0014".decodeHex ++ doubleHashedPubKeyBytes   // example 00147646c030f7e75b80f0a31cdcab731e6f424f22b2
   /*  To create a P2SH-P2WPKH address:
 
@@ -84,7 +83,6 @@ class PubKey_P2SH_P2WPKH (point:Point, mainNet:Boolean) extends PubKey(ECCPubKey
       188ba16284702258959d8bb63bb9a5d979b57875
 
       Then do BitcoinUtil.getBase58FromBytes(above value)   */
-    if (!eccPubKey.compressed) throw new Exception("Public key is uncompressed. Segwit needs compressed keys")    
     val redeemScriptHash = hash160(redeemScript) 
     val addrBytes = (if (mainNet) 0x05.toByte else 196.toByte) +: redeemScriptHash
     getBase58FromBytes(addrBytes)

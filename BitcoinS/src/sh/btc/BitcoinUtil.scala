@@ -49,6 +49,9 @@ private [sh] object BitcoinUtil {
 
   val sigHashAllBytes = getFixedIntBytes(0x01, 4)  // 1 implies SIGHASH_ALL // https://en.bitcoin.it/wiki/OP_CHECKSIG
   
+  val sigHashAll_UAHF_Bytes = getFixedIntBytes(0x41, 4)  // 1 implies SIGHASH_ALL // https://en.bitcoin.it/wiki/OP_CHECKSIG  , 0x40 is FORKID
+  val sigHash_UAHF_Byte = 0x41.toByte
+  
   type Amount = BigInt  
   type Address = String
 

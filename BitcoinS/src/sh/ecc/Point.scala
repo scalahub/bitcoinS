@@ -72,6 +72,9 @@ case class Point(x:BigInt, y:BigInt) {
     val pt = (u1 * G) + (u2 * this)
     (r mod n) == (pt.x mod n)
   }
+  
+  def verify(hash:Array[Byte], rs:(BigInt, BigInt)):Boolean = verify(hash, rs._1, rs._2)
+ 
   def verifyMessageBitcoinD(message:String, sig:String) = {
     // verify signature on msg (human string, such as "Hello") and signature Base64 encoded
     val (_, r, s) = decodeRecoverySig(sig.decodeBase64) // first param is recid. Ignore it

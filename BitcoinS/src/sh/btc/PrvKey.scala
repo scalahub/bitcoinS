@@ -28,12 +28,17 @@ object PrvKey {
     val (eccPrvKey, mainNet) = getECCPrvKeyAndNet(wif)
     new PrvKey_P2PKH(eccPrvKey, mainNet)
   }
+  def getPrvKeyP2PKH_UAHF(wif:String) = {
+    val (eccPrvKey, mainNet) = getECCPrvKeyAndNet(wif)
+    new PrvKey_P2PKH_UAHF(eccPrvKey, mainNet)
+  }
   def getPrvKeyP2SH_P2PK(wif:String) = {
     val (eccPrvKey, mainNet) = getECCPrvKeyAndNet(wif)
     new PrvKey_P2SH_P2PK(eccPrvKey, mainNet)
   }
   def getPrvKeyP2SH_P2WPKH(wif:String) = {
     val (eccPrvKey, mainNet) = getECCPrvKeyAndNet(wif)
+    if (!eccPrvKey.compressed) throw new Exception("P2SH_P2WPKH requires compressed private key")
     new PrvKey_P2SH_P2WPKH(eccPrvKey.bigInt, mainNet)
   }
 }

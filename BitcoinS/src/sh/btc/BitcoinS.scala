@@ -5,7 +5,7 @@ import BitcoinUtil._
 import sh.btc.DataStructures._
 
 object BitcoinS {
-  var debug = false
+
   var isMainNet = true // set to false for testnet
   
   def isP2SH_Address(address:String) = {
