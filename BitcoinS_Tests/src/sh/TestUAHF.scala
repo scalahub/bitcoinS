@@ -19,7 +19,7 @@ object TestUAHF1 extends App {
   // output1: mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf : 3.49
   // output2: mgRoeWs2CeCEuqQmNfhJjnpX8YvtPACmCX : 10
   // output3: mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf : 3
-  // output4: mgRoeWs2CeCEuqQmNfhJjnpX8YvtPACmCX : 3
+  // output4: mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf : 3
 
   val in1 = TxIn("cc34790086a16e6d4d1f059b260cc8756869ada3ce5a5255cdb0654a460f3cab", 0)
   val in2 = TxIn("3fc061b4df5b8cae2497f9733e5fab522cc81d3763c9417d61263d08f262c6a1", 0)
