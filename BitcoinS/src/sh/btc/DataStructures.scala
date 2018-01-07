@@ -50,7 +50,7 @@ object DataStructures {
     }
     
     @deprecated("Used only for BCH. Not a part of Bitcoin", "07 Jan 2018")
-    def getHashSigned_P2PKH_UASF(whichInput:Int, inputAddress:String, value:BigInt) = { // which input indices to sign, with amount. Last param is pubKeyHashed via RIPEMD160(SHA256(_))
+    def getHashSigned_P2PKH_UAHF(whichInput:Int, inputAddress:String, value:BigInt) = { // which input indices to sign, with amount. Last param is pubKeyHashed via RIPEMD160(SHA256(_))
       val currIn = ins(whichInput) 
       val nVer = getFixedIntBytes(version, 4) // signed As per rules
       val hashPrevOuts = dsha256(ins.flatMap(in => in.txHash.decodeHex.reverse ++ getFixedIntBytes(in.vOut, 4)))  // vOut is signed
