@@ -65,7 +65,7 @@ class Peer extends Actor {
       optRemoteAddr = Some(remote) 
       optLocalAddr = Some(local)
       sender ! VersionMsg(local, remote) // send version message
-    case "stop" | "connection closed" => // someone send this actor a shutdown signal (either remote stopped or manually)
+    case "stop" | "connection closed" => // someone sent this actor a shutdown signal (either remote stopped or manually)
       println(s"Peer stopped: $peer")
       context.stop(self)
     case any => println(s"Peer got unknown message: [$any] from [$sender]")
