@@ -1,5 +1,5 @@
 
-package sh.btc
+package sh.bch
 
 import sh.ecc._
 import sh.ecc.Util._
@@ -13,10 +13,9 @@ import sh.util.StringUtil._
 class PrvKey_P2PKH_UAHF (eccPrvKey:ECCPrvKey, mainNet:Boolean) extends PrvKey(eccPrvKey, mainNet) {
   lazy val pubKey = new PubKey_P2PKH(eccPrvKey.eccPubKey, mainNet)
   // ORDINARY 1Address
-  def signTx(rawTx:Array[Byte], whichInputsAmts:Seq[(Int, BigInt)]) = signTx_P2PKH(rawTx, whichInputsAmts)
   
   // https://github.com/Bitcoin-UAHF/spec/blob/master/uahf-technical-spec.md
-  def signTx_P2PKH(rawTx:Array[Byte], whichInputsAmts:Seq[(Int, BigInt)]) = { // which input indices to sign
+  def signTx(rawTx:Array[Byte], whichInputsAmts:Seq[(Int, BigInt)]) = { // which input indices to sign
     val tx = new TxParser(rawTx).getTx
     // also check that outputs are not P2SH, since they could be SegWit addresses.
     // Any coins sent to SegWit address will either be unretrievable or stealable.

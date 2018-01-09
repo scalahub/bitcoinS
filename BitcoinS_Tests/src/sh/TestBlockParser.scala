@@ -19,7 +19,8 @@ object TestBlockParser extends App {
     blk1Vector,
     blk2Vector,
     blk3Vector,
-    blk4Vector
+    blk4Vector,
+    blk5Vector // genesis block
   ).foreach{
     case (hex, hash, mroot, json, size) =>
       new TestBlockParser(hex, hash, mroot, json, size)
@@ -140,6 +141,37 @@ object BlockParserTestVectors {
   val blk4MRoot = "843bf58e083503ea272f90fb24cfc1a5b3b905f32470eff09602295e6b58480d"
   val blk4Size = 252
   
+  // genesis block below
+  val blk5Raw = "0100000000000000000000000000000000000000000000000000000000000000000000003BA3EDFD7A7B12B27AC72C3E67768F617FC81BC3888A51323A9FB8AA4B1E5E4A29AB5F49FFFF001D1DAC2B7C0101000000010000000000000000000000000000000000000000000000000000000000000000FFFFFFFF4D04FFFF001D0104455468652054696D65732030332F4A616E2F32303039204368616E63656C6C6F72206F6E206272696E6B206F66207365636F6E64206261696C6F757420666F722062616E6B73FFFFFFFF0100F2052A01000000434104678AFDB0FE5548271967F1A67130B7105CD6A828E03909A67962E0EA1F61DEB649F6BC3F4CEF38C4F35504E51EC112DE5C384DF7BA0B8D578A4C702B6BF11D5FAC00000000"
+  val blk5Json = """{
+	"result": {
+		"hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+		"confirmations": 503395,
+		"strippedsize": 285,
+		"size": 285,
+		"weight": 1140,
+		"height": 0,
+		"version": 1,
+		"versionHex": "00000001",
+		"merkleroot": "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b",
+		"tx": [
+			"4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"
+		],
+		"time": 1231006505,
+		"mediantime": 1231006505,
+		"nonce": 2083236893,
+		"bits": "1d00ffff",
+		"difficulty": 1,
+		"chainwork": "0000000000000000000000000000000000000000000000000000000100010001",
+		"nextblockhash": "00000000839a8e6886ab5951d76f411475428afc90947ee320161bbf18eb6048"
+	},
+	"error": null,
+	"id": null
+}"""
+  val blk5Hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+  val blk5MRoot = "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b".toLowerCase
+  val blk5Size = 285
+  
   val blk1Vector = (
     blk1Raw, // raw hex bytes
     blk1Hash, // expected blk hash
@@ -172,19 +204,28 @@ object BlockParserTestVectors {
     blk4Size
   )
   
+  val blk5Vector = (
+    blk5Raw,
+    blk5Hash,
+    blk5MRoot,
+    blk5Json,
+    blk5Size
+  )
+  
 }
 class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String, size:Long) {  
   val bytes = hex.decodeHex  
   require(bytes.size == size, s"Expected $size bytes. Found ${bytes.size} bytes")
-  ///////////////////////////////////
+  /////////////////////////////////// test that JSON and test vectors correspond
   val xml = Json2XML.jsonStringToXML(json)
   val xhash = (xml \\ "hash").text
   val xmerkleRoot = (xml \\ "merkleroot").text
   val xtxids = (xml \\ "tx").map(_.text)  
   require(xhash == blkHash)
-  require(xmerkleRoot == merkleRoot)  
-  ///////////////////////////////////
-  val parsedBlk = new BlockParser(bytes).getBlock
+  require(xmerkleRoot == merkleRoot, s"Merkle root mismatch. JSON contains: $xmerkleRoot, test vector contains: $merkleRoot")  
+  /////////////////////////////////// done
+  
+  val parsedBlk = new BlockParser(bytes).getBlock // now test the parser
 
   assert(parsedBlk.hash == blkHash)
   val computedMerkleRoot = parsedBlk.computeMerkleRoot.toLowerCase

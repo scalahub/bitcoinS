@@ -8,6 +8,7 @@ import sh.util.BytesUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
 import sh.btc.BitcoinS._
+import sh.util.HashUtil._
 
 object TestKeyRecovery extends App {
   TestKeyRecovery1
@@ -52,9 +53,9 @@ object TestKeyRecovery2 {
   val P1:Point = rInv * (s * R1 - z * G)
   val P2:Point = rInv * (s * R2 - z * G)
 
-  assert(b.point.verify(h, r, s) == true)
-  assert(P1.verify(h, r, s) == true)
-  assert(P2.verify(h, r, s) == true)
+  assert(b.point.verify(h, r, s))
+  assert(P1.verify(h, r, s))
+  assert(P2.verify(h, r, s))
   
   val recovered = recoverPubKeyPoints(r, s, h)
   assert(recovered.size == 4)
@@ -80,7 +81,7 @@ object TestKeyRecovery3 {
 object TestKeyRecovery4 {
   println("Test 4: [use test vectors to validate every value (sig, address, pubkey)]")
   isMainNet = false
-  // tv = "test vector"
+  // tv = "test vector". Taken from: https://gist.github.com/scalahub/cf5af5a9291a07a0331798287a9ad0d9
   val tv1 = """ 
     message       = 18426974636F696E205369676E6564204D6573736167653A0A17736F206D616E7920746F2063686F6F73652066726F6D21
     sighash       = BC2BE447AB153822FB7735D699E97FB60D123CF48839EA4E01D0A27A8851E497

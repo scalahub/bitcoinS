@@ -8,6 +8,7 @@ import sh.util.BytesUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
 import sh.btc.BitcoinS._
+import sh.util.HashUtil._
 
 case class Point(x:BigInt, y:BigInt) {
   if (x >= p || y >= p) throw new Exception("Invalid point. X and Y must be < p")

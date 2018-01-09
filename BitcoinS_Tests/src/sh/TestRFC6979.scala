@@ -6,6 +6,7 @@ import sh.ecc._
 import sh.util.BytesUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
+import sh.util.HashUtil._
 
 object TestVectorsRFC6979 {
   //Haskoin test vectors for RFC 6979 ECDSA (secp256k1, SHA-256)"

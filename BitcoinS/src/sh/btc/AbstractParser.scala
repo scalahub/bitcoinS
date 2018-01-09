@@ -2,31 +2,38 @@
 package sh.btc
 
 import BitcoinUtil._
+import sh.util.BytesUtil._
 
 abstract class AbstractParser(bytes:Array[Byte]) {
-  protected var currCtr:Int = 0 // stores currently parsed byte from bytes
+  var currCtr:Int = 0 // stores currently parsed byte from bytes
   
   protected def getAndIncrCtr = {
     val c = currCtr
     incrCtr(1) 
     c
   }
+  
+  protected def numBytesRemaining = bytes.size - currCtr
+  
   protected def incrCtr(int:Int) = currCtr += int 
   
-  protected def getNextBytes(int:Int) = (1 to int).map(i => bytes(getAndIncrCtr)) 
+  def getNextBytes(int:Int) = (1 to int).map(i => bytes(getAndIncrCtr)) 
   
   protected def getBytes(from:Int, to:Int) = (from to to).map(i => bytes(i))
   
-  protected def getNext32Hash = getHexFromLittleEndian(getNextBytes(32).toArray)
+  def getNext32Hash = getHexFromLittleEndian(getNextBytes(32).toArray)
   
   // unsigned
-  protected def getNext4UInt = getUInt4LittleEndian(getNextBytes(4).toArray)
+  def getNext4UInt = getUInt4LittleEndian(getNextBytes(4).toArray)
   
-  // signed
-  @deprecated("Not fully tested", "31 Dec 2017")
-  protected def getNext4SInt = getSInt4LittleEndian(getNextBytes(4).toArray)
+  // signed. NOTE: uses direct byte conversion to signed number
+  def getNext4SInt = getSInt4LittleEndian(getNextBytes(4).toArray)
   
-  protected def getCompactInt = { 
+  val ff = 0xff.toByte
+  val fe = 0xff.toByte
+  val fd = 0xff.toByte
+ 
+  def getCompactInt = { 
     val ctr = getAndIncrCtr
     val nextNumBytes = bytes(ctr) & 0xFF match {
       case 0xff => 8 // next four bytes encode size

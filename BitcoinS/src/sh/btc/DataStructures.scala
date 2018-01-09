@@ -8,6 +8,7 @@ import sh.ecc.Util._
 import sh.util.BytesUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
+import sh.util.HashUtil._
 
 object DataStructures {
   
@@ -66,7 +67,7 @@ object DataStructures {
       val hashOuts = dsha256(
         outs.flatMap(out =>
           getFixedIntBytes(out.value, 8) ++ out.optScriptPubKey.map{scriptPubKey =>
-            getVarIntBytes(scriptPubKey.size) ++ scriptPubKey
+            getCompactIntBytes(scriptPubKey.size) ++ scriptPubKey
           }.getOrElse(Seq(0x00.toByte))
         )
       )
@@ -97,7 +98,7 @@ object DataStructures {
       val hashOuts = dsha256(
         outs.flatMap(out =>
           getFixedIntBytes(out.value, 8) ++ out.optScriptPubKey.map{scriptPubKey =>
-            getVarIntBytes(scriptPubKey.size) ++ scriptPubKey
+            getCompactIntBytes(scriptPubKey.size) ++ scriptPubKey
           }.getOrElse(Seq(0x00.toByte))
         )
       )
@@ -168,7 +169,7 @@ object DataStructures {
       val prevBlockHashBytes = toggleEndianString(prevBlockHash)
       val merkleRootBytes = toggleEndianString(merkleRoot)
       val txBytes = txs.flatMap(_.serialize)
-      val numTxBytes = getVarIntBytes(txs.size)
+      val numTxBytes = getCompactIntBytes(txs.size)
       val header = versionBytes ++ prevBlockHashBytes++merkleRootBytes ++ timeBytes ++ nBits ++ nonceBytes
       val blk = header ++ numTxBytes ++ txBytes
       blk

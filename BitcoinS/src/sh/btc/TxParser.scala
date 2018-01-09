@@ -3,6 +3,7 @@ package sh.btc
 
 import sh.btc.BitcoinUtil._
 import sh.btc.DataStructures._
+import sh.util.HashUtil._
 
 class TxParser(bytes:Array[Byte]) extends AbstractParser(bytes) {
   protected def getTxIns = {

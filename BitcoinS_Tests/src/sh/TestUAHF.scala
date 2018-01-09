@@ -3,6 +3,7 @@ package sh
 import sh.ecc._
 import sh.btc.DataStructures._
 import sh.btc._
+import sh.bch._
 import sh.ecc.Util._
 import sh.util.BytesUtil._
 
@@ -12,8 +13,9 @@ object TestUAHF1 extends App {
   val prvKey = new PrvKey_P2PKH_UAHF(new ECCPrvKey(int mod n, true /* compressed */), false /* testnet */)
   val address = prvKey.pubKey.address // mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf
   assert(address == "mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf")
-  // cc34790086a16e6d4d1f059b260cc8756869ada3ce5a5255cdb0654a460f3cab : 0 : 1300000000 satoshis
-  // 3fc061b4df5b8cae2497f9733e5fab522cc81d3763c9417d61263d08f262c6a1 : 0 :  650000000 satoshis
+  // create a new tx as follows. The inputs are from the above address
+  // input1 cc34790086a16e6d4d1f059b260cc8756869ada3ce5a5255cdb0654a460f3cab : 0 : 1300000000 satoshis
+  // input2 3fc061b4df5b8cae2497f9733e5fab522cc81d3763c9417d61263d08f262c6a1 : 0 :  650000000 satoshis
   // 
   // total 19.5 BCH
   // output1: mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf : 3.49
@@ -71,14 +73,10 @@ object UAHF_TestVectors1 {
    */
 }
 object TestUAHF2 {
-  BitcoinS.isMainNet = false
-  val int = BigInt("谺酽⿄밑艧鯌⤡鍪渃溰鬔봬渹".getBytes)
-  val prvKey = new PrvKey_P2PKH_UAHF(new ECCPrvKey(int mod n, true /* compressed */), false /* testnet */)
-  val address = prvKey.pubKey.address // mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf
-  assert(address == "mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf")
-  // e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72 : 0 :  349000000 satoshis
-  // e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72 : 2 :  300000000 satoshis
-  // e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72 : 3 :  300000000 satoshis
+  // create a new tx as follows
+  // input1 e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72 : 0 :  349000000 satoshis
+  // input2 e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72 : 2 :  300000000 satoshis
+  // input3 e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72 : 3 :  300000000 satoshis
   // 
   // total 9.49 BCH
   // output1: mgRoeWs2CeCEuqQmNfhJjnpX8YvtPACmCX : 9.48
@@ -93,7 +91,7 @@ object TestUAHF2 {
     (1, BigInt(300000000)), 
     (2, BigInt(300000000))
   )
-  val signed = prvKey.signTx(unsigned, values)
+  val signed = TestUAHF1.prvKey.signTx(unsigned, values)
   assert(signed.encodeHex == UAHF_TestVectors2.signedHex)
   assert(new TxParser(signed).getTx.txid == "c4e05e92c867f56ba846b45f42cbbc335d1147884c62e29035609a0b9756dd6e")
   println("UAHF test 2 passed")

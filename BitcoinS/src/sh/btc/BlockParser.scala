@@ -7,6 +7,7 @@ import sh.util.BytesUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
 import sh.btc.BitcoinS._
+import sh.util.HashUtil._
 
 class BlockParser(bytes:Array[Byte]) extends TxParser (bytes) { 
   // Header is the first 80 bytes, which has following data:

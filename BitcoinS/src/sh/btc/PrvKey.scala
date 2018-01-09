@@ -4,6 +4,7 @@ package sh.btc
 import sh.ecc._
 import sh.util.Base58Check
 import sh.ecc.Util._
+import sh.bch.PrvKey_P2PKH_UAHF
 import sh.btc.BitcoinUtil._
 import sh.util.BytesUtil._
 import sh.util.StringUtil._
@@ -28,6 +29,7 @@ object PrvKey {
     val (eccPrvKey, mainNet) = getECCPrvKeyAndNet(wif)
     new PrvKey_P2PKH(eccPrvKey, mainNet)
   }
+  @deprecated("Used only for BCH. Not a part of Bitcoin", "07 Jan 2018")
   def getPrvKeyP2PKH_UAHF(wif:String) = {
     val (eccPrvKey, mainNet) = getECCPrvKeyAndNet(wif)
     new PrvKey_P2PKH_UAHF(eccPrvKey, mainNet)

@@ -6,6 +6,7 @@ import sh.btc.BitcoinS._
 import sh.ecc._
 import sh.ecc.Util._
 import sh.util.BytesUtil._
+import sh.util.HashUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
 
@@ -118,32 +119,6 @@ private [sh] object BitcoinUtil {
     }
   }
   
-  // UNSIGNED
-  def getUInt4LittleEndian(bytes:Array[Byte]) = { // returns integer from 4 bytes int 
-    if (bytes.size != 4) throw new Exception("Expected 4 bytes in UINT32. Found "+bytes.size)
-    BigInt(bytes.reverse.encodeHex, 16).toLong 
-  }
-  
-  // SIGNED
-  def getSInt4LittleEndian(bytes:Array[Byte]) = { // returns signed integer from 4 bytes int 
-    if (bytes.size != 4) throw new Exception("Expected 4 bytes in UINT32. Found "+bytes.size)
-    BigInt(bytes.reverse).toLong 
-  }
-
-  def getUInt8LittleEndian(bytes:Array[Byte]) = { // returns integer from 4 bytes int 
-    if (bytes.size != 8) throw new Exception("Expected 8 bytes in UINT64. Found "+bytes.size)
-    BigInt(bytes.reverse.encodeHex, 16)
-  }
-  
-  def getHexFromLittleEndian(bytes:Array[Byte]) = bytes.reverse.encodeHex
-  
-  def getBase58FromBytes(addrBytes:Array[Byte]) = 
-    Base58Check.encodePlain(addrBytes ++ dsha256(addrBytes).take(4))
-  
-  def hash160(bytes:Seq[Byte]) = ripeMD160(sha256Bytes2Bytes(bytes.toArray))
-  
-  def getHashed(bytes:Seq[Byte]) = dsha256(bytes.toArray).reverse.encodeHex
-  
   def getAddrFromOutScript(outScript:Array[Byte]) = {
     // if its a simple pay to address (OP_DUP OP_HASH160 OP_PUSHDATXX)
     // https://bitcoin.stackexchange.com/a/19108/2075
@@ -197,6 +172,28 @@ private [sh] object BitcoinUtil {
     }
   }  
   
+  // UNSIGNED
+  def getUInt4LittleEndian(bytes:Array[Byte]) = { // returns integer from 4 bytes int 
+    if (bytes.size != 4) throw new Exception("Expected 4 bytes in UINT32. Found "+bytes.size)
+    BigInt(bytes.reverse.encodeHex, 16).toLong 
+  }
+  
+  // SIGNED
+  def getSInt4LittleEndian(bytes:Array[Byte]) = { // returns signed integer from 4 bytes int 
+    if (bytes.size != 4) throw new Exception("Expected 4 bytes in UINT32. Found "+bytes.size)
+    BigInt(bytes.reverse).toLong 
+  }
+
+  def getUInt8LittleEndian(bytes:Array[Byte]) = { // returns integer from 4 bytes int 
+    if (bytes.size != 8) throw new Exception("Expected 8 bytes in UINT64. Found "+bytes.size)
+    BigInt(bytes.reverse.encodeHex, 16)
+  }
+  
+  def getHexFromLittleEndian(bytes:Array[Byte]) = bytes.reverse.encodeHex
+  
+  def getBase58FromBytes(addrBytes:Array[Byte]) = 
+    Base58Check.encodePlain(addrBytes ++ dsha256(addrBytes).take(4))
+  
   val max4VarInt = BigInt("FFFFFFFF", 16).toLong
   val max2VarInt = BigInt("FFFF", 16).toLong  
   val max1VarInt = BigInt("FD", 16).toLong  
@@ -208,7 +205,7 @@ private [sh] object BitcoinUtil {
     (pad ++ value).reverse // reverse because Little Endian
   }
 
-  def getVarIntBytes(l:Long) = {
+  def getCompactIntBytes(l:Long) = { // reverse of getCompactInt
     // https://en.bitcoin.it/wiki/Protocol_documentation#Variable_length_integer    
     if (l < 0) throw new Exception("VarInt must be >= 0")
     if (l > max4VarInt) { // 8 bytes      
@@ -248,14 +245,14 @@ Value	Storage length	Format
       val prevTxHashBytes = toggleEndianString(in.txHash)
       val vOutBytes = getFixedIntBytes(BigInt(in.vOut), 4)
       val scriptSig = in.optScriptSig.getOrElse(Nil)
-      val scriptSigBytes = getVarIntBytes(scriptSig.size) 
+      val scriptSigBytes = getCompactIntBytes(scriptSig.size) 
       prevTxHashBytes ++ vOutBytes ++ scriptSigBytes ++ scriptSig ++ in.seqNumBytes
     }
     val outBytes = outs.flatMap{out =>
       val valueBytes = getFixedIntBytes(out.value, 8)
       val lockingScriptBytes = out.optScriptPubKey match {
         case Some(scriptPubKey) =>           
-          val scriptPubKeySizeBytes = getVarIntBytes(scriptPubKey.size)
+          val scriptPubKeySizeBytes = getCompactIntBytes(scriptPubKey.size)
           scriptPubKeySizeBytes ++ scriptPubKey
         case _ => Seq(0x00.toByte) // should not happen under normal circumstances
       }
@@ -263,13 +260,10 @@ Value	Storage length	Format
     }
     val isSegWit = wits.exists(_.data.nonEmpty)
     val witBytes = if (isSegWit) wits.flatMap{wit =>
-      getVarIntBytes(wit.data.size) ++ wit.data.flatMap{stackItem =>
-        val stackItemSize = getVarIntBytes(stackItem.size)
-        stackItemSize ++ stackItem
-      }      
+      getCompactIntBytes(wit.data.size) ++ wit.data.flatMap{stackItem => getCompactIntBytes(stackItem.size) ++ stackItem}
     } else Nil
-    val inCtrBytes = getVarIntBytes(ins.size)
-    val outCtrBytes = getVarIntBytes(outs.size)
+    val inCtrBytes = getCompactIntBytes(ins.size)
+    val outCtrBytes = getCompactIntBytes(outs.size)
     val flagMarkerBytes = if (isSegWit) Seq(0x00.toByte, 0x01.toByte) else Nil // 1st byte after version is 00 for a segwit tx
     val versionBytes = getFixedIntBytes(version, 4)
     val lockTimeBytes = getFixedIntBytes(lockTime, 4) // should be Seq[Byte](0x00, 0x00, 0x00, 0x00)

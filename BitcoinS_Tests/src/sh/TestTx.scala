@@ -9,6 +9,7 @@ import sh.util.StringUtil._
 import sh.util.BigIntUtil._
 import sh.btc.DataStructures._
 import sh.btc.BitcoinS._
+import sh.util.HashUtil._
 
 object TestAllTx extends App {
   TestCorrectlySpendsP2PKH
@@ -194,6 +195,26 @@ object TestP2PKH {
   assert(parsed.txid == parsed.segWitTxHash)
   assert(parsed.isSigned(Seq(0, 0)))
   println("P2PKH input tests passed")
+}
+
+object TestP2PKHPushTx extends App { 
+  // standard tx (most common till now). Sent to 1abc address (mainet) or mabc.. /nabc.. address (testnet)
+  val mainNet = false // set to testnet
+  isMainNet = mainNet
+  val compr = true
+  val key = new ECCPrvKey("BB2AC60BC518C0E239D5AF9D8D051A6BDFD0D931268DCA70C59E5992", compr)
+  val p2pkhKey = new PrvKey_P2PKH(key, mainNet)
+  assert(p2pkhKey.pubKey.address == "muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1") 
+  // following inputs were used in creating tx (funds were sent to above muLwLjVipwixXcECVMcEwgsrtfGRTB4zB1)
+  val in1 = TxIn("9652b16e1d4956ad187d8462eb718c0cb09b7482badb97e1fdd4d9869c5bee38", 0)
+  
+  // the following output was used to test
+  // Note 2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF faucet address
+  val out1 = TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  129000000)
+  val tx = createNonSegWitTxRaw(Seq(in1), Seq(out1))
+  val signed = p2pkhKey.signTx_P2PKH(tx, Seq(0)) // input 0  is P2PKH inputs
+  val parsed = new TxParser(signed).getTx
+  println("Hex: "+signed.encodeHex)
 }
 
 object TestP2SH_P2PK {

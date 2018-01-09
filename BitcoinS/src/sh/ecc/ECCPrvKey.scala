@@ -7,6 +7,7 @@ import sh.util.BytesUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
 import sh.btc.BitcoinS._
+import sh.util.HashUtil._
 
 case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
   def this(hex:String, compressed:Boolean) = this(BigInt(hex, 16), compressed)

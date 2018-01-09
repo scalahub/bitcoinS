@@ -6,6 +6,7 @@ import sh.ecc.Util._
 import sh.btc.BitcoinS._
 import sh.btc.BitcoinUtil._
 import sh.util.StringUtil._
+import sh.util.HashUtil._
 
 abstract class PubKey(val eccPubKey:ECCPubKey, val mainNet:Boolean) {
   val address:String
