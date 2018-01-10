@@ -21,9 +21,6 @@ class DataProcessor {
             val unparsed = parser.bytes.drop(headerLen + header.payloadLen)
             if (unparsed.nonEmpty) optParser = Some(new MsgParser(unparsed)) // if there are enough bytes for header then parse remaining bytes            
             if (debug) println(s"[-] checksum[${header.checkSumHex}] payload[${header.payloadLen}] command[${header.command}] parsed[${parser.bytes.size}] initial[${initialBytes.size}]")
-            /* if above requirement fails, it implies that unparsed data is non-empty but less than 24 bytes.. i.e. the original packet was of the form:
-               |header|payload|header|payload|hea--- (i.e., incomplete header too. This is not expected, but if it occurs, we need to handle it,
-               (perhaps by adding the unparsed bytes to incompletePacket.) */
           case (header, None) => // header is defined, no payload and invalid size            
             incompletePacket = parser.bytes
             if (debug) println(s"[+] checksum[${header.checkSumHex}] payload[${header.payloadLen}] command[${header.command}] parsed[${parser.bytes.size}] initial[${initialBytes.size}]")

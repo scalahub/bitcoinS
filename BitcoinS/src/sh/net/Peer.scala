@@ -79,17 +79,17 @@ class Peer extends Actor {
     }    
   }
   
-  def processTxCmd(p:Payload) = { // peer has send a tx to us (possibly as a response to our getdata)
+  def processTxCmd(p:Payload) = { // peer has send a tx to us (possibly as a response to our getdata). Note that we should not accept tx unless it comes as a response to getdata
     val tx = new TxParser(p.bytes.toArray).getTx // first parse the tx
     if (unknownTxHashes.contains(tx.txid)) { // unknownhashes will contain txid if we have made made a getdata req, as a response to inv command
-      seenTx += tx.txid -> tx // add to seen tx
+      seenTx += tx.txid -> tx // add to seen tx 
       unknownTxHashes -= tx.txid // remove from unknown tx.. We will not store this again
       // if (debug) println(s"Received tx [${tx.txid}] from [$peer]") 
       // todo: validate tx,  push to other peers and invoke handler onTx
     }
   }
   
-  def processBlkCmd(p:Payload) = { // peer has send a tx to us (possibly as a response to our getdata)
+  def processBlkCmd(p:Payload) = { // peer has send a block to us (possibly as a response to our getdata)
     val blk = new BlockParser(p.bytes.toArray).getBlock // parse the block
     seenBlk += blk.hash
     if (debug) println(s"Received block [${blk.hash}] from [$peer]")
