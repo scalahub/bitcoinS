@@ -40,7 +40,9 @@ object TestBitcoinJCompatibility extends App {
   }
   println
   println("BitcoinJ private key from int compatibility tests passed")
-  // test create tx and sign tx (i.e., that the raw tx after creation and signing match in BitcoinJ and here
+  // Create and sign tx. Ensure that results from BitcoinJ match the ones returned here.
+  // Note that both unsigned and signed tx must match. The signed must match because both libraries use deterministic k generation from RFC6979
+  // We can only P2PKH inputs since BitcoinJ does not yet support SegWit (P2SH_P2WPKH)
   import HashUtil._
   import StringUtil._
   import BytesUtil._

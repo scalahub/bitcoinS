@@ -27,7 +27,7 @@ object ECCPubKey {
     }    
   }
 }
-case class ECCPubKey(val point:Point, val compressed:Boolean) {
+case class ECCPubKey(point:Point, compressed:Boolean) {
 
   import point._
   

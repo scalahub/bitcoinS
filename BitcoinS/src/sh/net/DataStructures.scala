@@ -33,7 +33,7 @@ object DataStructures {
      76 65 72 73 69 6F 6E 00 00 00 00 00                                           - "version" command
      64 00 00 00                                                                   - Payload is 100 bytes long
      3B 64 8D 5A                                                                   - payload checksum */
-  final case class P2PHeader(command:String, checkSum:Array[Byte], payloadLen:Int) {
+  case class P2PHeader(command:String, checkSum:Array[Byte], payloadLen:Int) {
     val checkSumHex:String = checkSum.encodeHex
     val bytes = getMagicBytes ++ getFixedStringBytes(command, 12) ++ UInt32(payloadLen).bytes ++ checkSum
   }
@@ -72,6 +72,7 @@ object DataStructures {
   val txCmd = "tx" 
   val blockCmd = "block" 
   
+  // below used for sending to others
   object VerAckMsg extends P2PMsg(verAckCmd)
   
   object GetAddrMsg extends P2PMsg(getAddrCmd) // unused as of now
