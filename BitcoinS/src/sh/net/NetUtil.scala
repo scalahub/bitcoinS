@@ -60,8 +60,8 @@ object NetUtil {
   implicit def bytesToChar32(bytes:Seq[Byte]) = Char32(bytes)
   private [net] implicit def hash32displayedToChar32(hashRpcHex:String) = bytesToChar32(hashRpcHex.decodeHex.reverse)
   
-  // Important the implicits below can induce bugs elsewhere because they can cause data to be implictly converted without 
-  // our knowledge and intention. Use with caution!
+  // Important: The implicits below might induce bugs elsewhere because they can cause data to be implictly converted without 
+  // our knowledge and intention. Use with caution! (and mark as private[net])
   implicit def uInt32ToInt(uInt32:UInt32) = uInt32.toLong.toInt
   implicit def longToUInt32(long:Long) = UInt32(long)
   implicit def stringToUInt32(hex:String) = UInt32(BigInt(hex, 16).toLong)

@@ -87,8 +87,7 @@ case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
     eccPubKey.encodeRecoverySig(r, s, hash)
   }
   // uses key recovery
-  def signMessageBitcoinD(message:String) = 
-    signHashKeyRecovery(dsha256(getMessageToSignBitcoinD(message))).encodeBase64
+  def signMessageBitcoinD(message:String) = signHashKeyRecovery(dsha256(getMessageToSignBitcoinD(message))).encodeBase64
   
   override def toString = "ECCPrvKey [Hidden] with publicKey: "+eccPubKey.hex
    

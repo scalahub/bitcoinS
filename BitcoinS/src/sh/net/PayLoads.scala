@@ -21,6 +21,7 @@ object Payloads {
     val numItems:VarInt = invVectors.size
   } with Payload(numItems.bytes ++ invVectors.flatMap(_.bytes)) {
     def this(invVector:InvVector) = this(Seq(invVector))
+    override def toString = "invPayload: "+numItems.bigInt+": "+(if (numItems.bigInt > 0) invVectors(0).toString else "None")
   }
   
   case class AddrPayload(netAddrs:Seq[NetAddrPayload]) extends {
@@ -38,18 +39,13 @@ object Payloads {
     version.bytes ++ services.bytes ++ timeStamp.bytes ++ addr_recv.bytes ++ addr_from.bytes ++ 
     nonce.bytes ++ getVarStringBytes(userAgent) ++ startHeight.bytes ++ relay.bytes
   ) {
-    def this(socket:Socket) = this(
-      ourVersion, BigInt(0), getTime, 
-      new NetAddrPayload(socket.getLocalAddress.getAddress, socket.getLocalPort, true),
-      new NetAddrPayload(socket.getInetAddress.getAddress, socket.getPort, true),
-      BigInt(nonce.getAndIncrement), defaultUserAgent, 1, true
-    )
-    def this(local:InetSocketAddress, remote:InetSocketAddress) = this(
+    def this(local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean) = this(
       ourVersion, BigInt(0), getTime, 
       new NetAddrPayload(local.getAddress.getAddress, local.getPort, true),
       new NetAddrPayload(remote.getAddress.getAddress, remote.getPort, true),
-      BigInt(nonce.getAndIncrement), defaultUserAgent, 1, true
+      BigInt(nonce.getAndIncrement), defaultUserAgent, 1, relay
     )
+    def this(local:InetSocketAddress, remote:InetSocketAddress) = this(local, remote, true)
   }
   /*    https://en.bitcoin.it/wiki/Protocol_documentation#Network_address
    (12 bytes 00 00 00 00 00 00 00 00 00 00 FF FF, followed by the 4 bytes of the IPv4 address). 

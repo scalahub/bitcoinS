@@ -115,7 +115,7 @@ import TestVectorsRFC6979._
 object TestRFC6979 extends App {
   // test vectors 1
   //tvs.map(tv => new PrvKey(tv.key, true).sign(tv.msg))
-  /*  Above tvs have signature wrong (s values are high in many cases, so we will only check that the ks are correct. 
+  /*  Above tvs have signature wrong: s values are high in many cases, so we will only check that the ks are correct.
       Indeed they are. Below is the output
 
       Deterministic => 8f8a276c19f4149656b280621e358cce24f5f52542772691ee69063b74f15d15

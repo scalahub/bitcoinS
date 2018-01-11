@@ -2,10 +2,11 @@
 package sh.bch
 
 import sh.btc.BitcoinS._
-import sh.net.Peer
+import sh.net.Node
 
-object BitcoinCashPeer {
+object BitcoinCashSNode extends Node {
   /* https://gist.github.com/scalahub/09dedd9a30ee6b42a61adf481f5830eb#file-bitcoincash-seed-servers-L53 */
+  lazy val id = "BitcoinCash"
   val seeds = if (isMainNet) Seq(
     "abc.vom-stausee.de",
     "abc1.hsmiths.com", 
@@ -23,5 +24,4 @@ object BitcoinCashPeer {
     "180.235.49.196",
     "electrum-testnet-abc.criptolayer.net"
   )
-  val peers = seeds.map(Peer.connectTo)
 }

@@ -2,9 +2,10 @@
 package sh.btc
 
 import BitcoinS._
-import sh.net.Peer
+import sh.net.Node
 
-object BitcoinPeer {
+object BitcoinSNode extends Node{
+  lazy val id = "BitcoinCash"
   val seeds = if (isMainNet) Seq(
     "seed.bitcoin.sipa.be", 
     "dnsseed.bluematt.me",  
@@ -18,5 +19,4 @@ object BitcoinPeer {
     "testnet-seed.bluematt.me",
     "testnet-seed.bitcoin.schildbach.de"
   )
-  val peers = seeds.map(Peer.connectTo)
 }

@@ -16,7 +16,7 @@ class BetterBigInt (bigInt:BigInt) {
     val numHex = numBytes * 2
     val hex = toHex
     if (hex.size > numHex) throw new Exception("Error converting $i to hex with $numBytes bytes. Requires ${hex.size/2} bytes")
-    val prefix = (1 to (numHex - hex.size) map{i => "0"} mkString)
+    val prefix = (1 to (numHex - hex.size) map{_ => "0"} mkString)
     prefix ++ hex
   }
     

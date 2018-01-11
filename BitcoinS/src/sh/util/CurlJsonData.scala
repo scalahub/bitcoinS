@@ -7,7 +7,7 @@ import java.net.URL
 import Json2XML._
 import org.apache.commons.io.IOUtils
 
-object CurlJsonData { // makes curl requesr with JSON input (and possibly output)
+object CurlJsonData { // makes curl request with JSON input (and possibly output)
   def curlXML(url:String, jsonEncodedString:String) = jsonStringToXML(curl(url, jsonEncodedString))
 
   /**

@@ -10,11 +10,12 @@ import Tcp._
 import sh.net.DataStructures._
 
 /* code borrowed from https://doc.akka.io/docs/akka/2.5.8/io-tcp.html?language=scala#connecting */
-private object P2PClientActor {
-  def props(remote: InetSocketAddress, replies: ActorRef) = Props(classOf[P2PClientActor], remote, replies)
+private object P2PClient {
+  def props(remote: InetSocketAddress, replies: ActorRef) = Props(classOf[P2PClient], remote, replies)
 }
 
-private class P2PClientActor(remote: InetSocketAddress, listener: ActorRef) extends Actor {
+// this actor talks to remote p2p peer
+private class P2PClient(remote: InetSocketAddress, listener: ActorRef) extends Actor {
 
   import context.system
 

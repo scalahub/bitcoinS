@@ -41,7 +41,7 @@ object DataStructures {
 
   case class Tx(version:Long, ins:Ins, outs:Outs, wits:Wits, lockTime:Long, txid:String, isSegWit:Boolean, segWitTxHash:String, size:Int, vSize:Int) {
     def serialize = createSegWitTx(version, ins zip wits, outs, lockTime)
-    
+    override def toString = txid
     def getHashSigned_P2PKH(whichInput:Int, inputAddress:String) = {
       val emptyIns = ins.map(in => new TxIn(in.txHash, in.vOut).setSeqNum(in.seqNum)) // empty = remove all scriptSigs (default is None)
       val (scriptPubKey, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(inputAddress)
@@ -160,6 +160,7 @@ object DataStructures {
     merkleRoot:String, nBits:Seq[Byte], nonce:Long
   ) extends BlkSummary(hash, prevBlockHash, time, version, txs.map(_.txid)) {
     if (nBits.size != 4) throw new Exception("NBits must be exactly 4 bytes")
+    override def toString = hash
     def serialize = {
       // block is serialized as header + numTxs + txs
       // header = version(4)+prevBlkHeaderHash(32)+merkleRoot(32)+4(time)+4(nBits)+4(nonce)

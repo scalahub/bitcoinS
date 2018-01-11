@@ -16,7 +16,7 @@ import Payloads._
 object DataStructures {
 
   val ipv4to6prefix = "00000000000000000000FFFF".decodeHex
-  val ourVersion = 70013 // 70003
+  val ourVersion = 70003 
   val defaultUserAgent = "/BitcoinS:0.1/" 
   val nonce = new AtomicLong(0)
 
@@ -42,6 +42,7 @@ object DataStructures {
     def this(command:String) = this(command, new Payload(Nil))
     val header = P2PHeader(command, payload.checkSum, payload.len) 
     val bytes = header.bytes ++ payload.bytes
+    override def toString = "command: "+command+"payload: "+payload.toString
   }
   type InvType = UInt32
   
@@ -57,6 +58,7 @@ object DataStructures {
        The same holds for txids */      
     def this(invType:InvType, hashRpcHex:String) = this(invType, hashRpcHex:Char32)
     val bytes = invType.bytes ++ hash.bytes 
+    override def toString = "InvType: "+invType+": "+hash.rpcHash
   }
   
   val verAckCmd = "verack"
@@ -77,11 +79,13 @@ object DataStructures {
   
   object GetAddrMsg extends P2PMsg(getAddrCmd) // unused as of now
   
-  case class GetDataMsg(invVectors:Seq[InvVector]) extends P2PMsg(getDataCmd, new InvPayload(invVectors))
+  case class GetDataMsg(invVectors:Seq[InvVector]) extends P2PMsg(getDataCmd, new InvPayload(invVectors)) {
+    def this(blockHash:String) = this(Seq(InvVector(MSG_BLOCK, blockHash)))
+  }
   
   case class PushTxInvMsg(txRpcHash:String) extends P2PMsg(invCmd, new InvPayload(InvVector(MSG_TX, txRpcHash))) 
   
-  case class VersionMsg(local:InetSocketAddress, remote:InetSocketAddress) extends P2PMsg(versionCmd, new VersionPayload(local, remote))
+  case class VersionMsg(local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean) extends P2PMsg(versionCmd, new VersionPayload(local, remote, relay))
   
   case class PongMsg(ping:PingPayload) extends P2PMsg(pongCmd, PongPayload(ping))
   

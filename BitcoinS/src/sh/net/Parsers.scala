@@ -1,6 +1,7 @@
 
 package sh.net
 
+import akka.util.ByteString
 import sh.btc.BitcoinS._
 import sh.util.StringUtil._
 import sh.net.DataStructures._
@@ -13,12 +14,12 @@ import Payloads._
 
 object Parsers {
   
-  class MsgParser(val bytes:Array[Byte]) {
+  class MsgParser(val bytes:ByteString) {
     require(bytes.nonEmpty) // sanity check for testing
-    val result:Option[(P2PHeader, Option[Array[Byte]])] = new HeaderParser(bytes).header.map(h => (h, new PayloadParser(bytes.drop(headerLen).take(h.payloadLen), h).result))
+    val result:Option[(P2PHeader, Option[ByteString])] = new HeaderParser(bytes).header.map(h => (h, new PayloadParser(bytes.drop(headerLen).take(h.payloadLen), h).result))
   }
   
-  class HeaderParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
+  class HeaderParser(bytes:ByteString) extends AbstractNetParser(bytes.toArray) {
     val header = if (bytes.size >= 24 && getNextBytes(4).toArray.encodeHex == getMagicBytes.encodeHex) { // valid header start
       val command = getString(12)
       val payloadSize = getNext4UInt.toInt
@@ -27,12 +28,12 @@ object Parsers {
     } else None    
   }
 
-  class PayloadParser(bytes:Array[Byte], header:P2PHeader) {
-    require (bytes.size <= header.payloadLen) // sanity check for testing
+  class PayloadParser(bytes:ByteString, header:P2PHeader) {
+    // require (bytes.size <= header.payloadLen) // sanity check for testing
     private val validSize = bytes.size == header.payloadLen
     private val validCheckSum = validSize && header.checkSumHex == dsha256(bytes).take(4).encodeHex
     val result = if (validCheckSum) Some(bytes) else None
-    require(validSize == validCheckSum) // sanity check for testing. If this fails then we are getting invalid packet. We would need to deal with them
+    // require(validSize == validCheckSum) // sanity check for testing. If this fails then we are getting invalid packet. We would need to deal with them
   }
   
   class InvPayloadParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
