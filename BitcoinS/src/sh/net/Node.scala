@@ -1,17 +1,11 @@
 package sh.net
-//
-//import akka.actor.ActorRef
-import akka.util.Timeout
-import scala.concurrent.Await
-//import scala.util.Random
-import scala.concurrent.Future
-import sh.btc.DataStructures._
-//import sh.util.StringUtil._
-import akka.actor.ActorSystem
-//import sh.btc.TxParser
-//import scala.collection.mutable.{Map => MMap}
 
-trait Node {
+import akka.util.Timeout
+import scala.concurrent.{Await, Future}
+import sh.btc.DataStructures._
+import akka.actor.ActorSystem
+
+trait Node extends EventListener {
 
   val id:String // BTC / BCH
     
@@ -39,7 +33,7 @@ trait Node {
   // below commands to be exposed 
   def start(relay:Boolean = true) = seeds.map(connectTo(_, relay))
 
-  def stop = peerGroup ! "stop"
+  def stop = await[String](peerGroup ? "disconnect")
     
   def connectTo(hostName:String, relay:Boolean = true):String = await[String](peerGroup ? ("connect", hostName, relay))
   
@@ -51,4 +45,5 @@ trait Node {
   
   def getPeers = await[Array[String]](peerGroup ? "getpeers")
   
+  sys.addShutdownHook(try peerGroup ! "stop" catch {case a:Throwable => a.printStackTrace})
 }

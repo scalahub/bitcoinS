@@ -17,11 +17,11 @@ class BlockParser(bytes:Array[Byte]) extends TxParser (bytes) {
   val time = getNext4UInt // unsigned
   val nBits = getNextBytes(4)
   val nonce = getNext4UInt // unsigned
-  val currBlockHash = getHashed(getBytes(0, 79)) 
+  val hash = getHashed(getBytes(0, 79)) 
 
   // if header not needed, replace above by: incrCtr(80) // skip 80 bytes of header
   lazy val txs:Seq[Tx] = 1 to getCompactInt map (_ => getTx) // first getCompactInt returns numTx
   
   // https://bitcoin.org/en/developer-reference#raw-transaction-format        
-  lazy val getBlock = Blk(currBlockHash, prevBlockHash, time, version, txs, merkleRootHash, nBits, nonce)
+  lazy val getBlock = Blk(hash, prevBlockHash, time, version, txs, merkleRootHash, nBits, nonce)
 }
