@@ -54,7 +54,8 @@ object TestBitcoinJCompatibility extends App {
         val txid = dsha256(("b"+i).getBytes).encodeHex
         val vout = i
         val jKey = ECKey.fromPrivate(eccKey.bigInt.bigInteger, compressed)
-        (key, TxIn(txid, vout).setSeqNum(0xFFFFFFFFL - 2), jKey)
+        //(key, TxIn(txid, vout).setSeqNum(0xFFFFFFFFL - 2), jKey)
+        (key, TxIn(txid, vout), jKey)
       }
       val outs = 1 to 40 map{i =>
         val seed = dsha256(("c"+i).getBytes)
@@ -67,7 +68,7 @@ object TestBitcoinJCompatibility extends App {
         }
         new TxOut(addr, amt)
       }
-      val sTx = createNonSegWitTxRaw(ins.unzip3._2, outs)
+      val sTx = new TxParser(createNonSegWitTxRaw(ins.unzip3._2, outs)).getTx.setRBF.serialize
       val jTx = createJTx(ins.unzip3._2, outs)
       assert(jTx.bitcoinSerialize.encodeHex == sTx.encodeHex)
       val ssTx = ins.unzip3._1.zipWithIndex.foldLeft(sTx){case (oldTx, (key, i)) => key.signTx(oldTx, i, 10000000000000L)} 

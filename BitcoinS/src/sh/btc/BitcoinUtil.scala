@@ -89,7 +89,7 @@ private [sh] object BitcoinUtil {
   def getScriptPubKeyFromAddress(address:Address):Seq[Byte] = {
     val (scriptPubKey, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(address)
     if (isMainNet == isMainNetAddr) scriptPubKey 
-    else throw new Exception(s"Invalid net params. MainNet address = $isMainNetAddr while MainNet = $isMainNet")
+    else throw new Exception(s"Invalid network. $address (MainNet = $isMainNetAddr) while MainNet = $isMainNet")
   }
   
   def getScriptPubKeyAndNetFromAddress(address:Address):(Seq[Byte], Boolean) = { // Boolean returns isMainNet

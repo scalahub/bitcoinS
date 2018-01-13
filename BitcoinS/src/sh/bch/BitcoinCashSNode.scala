@@ -22,6 +22,7 @@ object BitcoinCashSNode extends Node {
     "electroncash.cascharia.com"
   ) else Seq(
     "180.235.49.196",
-    "electrum-testnet-abc.criptolayer.net"
+    "electrum-testnet-abc.criptolayer.net",
+    "testnet-seed-abc.bitcoinforks.org"
   )
 }

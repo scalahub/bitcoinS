@@ -5,7 +5,7 @@ import BitcoinS._
 import sh.net.Node
 
 object BitcoinSNode extends Node{
-  lazy val id = "BitcoinCash"
+  lazy val id = "Bitcoin"
   val seeds = if (isMainNet) Seq(
     "seed.bitcoin.sipa.be", 
     "dnsseed.bluematt.me",  

@@ -56,7 +56,7 @@ class Peer(peerGroup:ActorRef, relay:Boolean) extends Actor {
 
     case a:ActorRef => optClientActor = Some(a) // received actorRef of remote.     
     
-    case m:P2PMsg => optClientActor.map(_ ! m)  // send tx
+    case m:P2PMsg => optClientActor.map(_ ! m)  // push tx, get tx/block etc (commands coming fromg PeerGroup)
 
     case Connected(remote, local) => // connect message send initially (or during reconnect, once implemented)
       optRemoteAddr = Some(remote) 

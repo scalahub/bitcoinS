@@ -24,6 +24,8 @@ object DataStructures {
       this.seqNum = long
       this
     }
+    // set input as replacable (Replace-By-Fee (RBF))
+    def setRBF = setSeqNum(0xFFFFFFFFL - 2)
     def seqNumBytes = getFixedIntBytes(seqNum, 4) // unsigned
     def unsetScriptSig = optScriptSig = None
   }       
@@ -42,6 +44,12 @@ object DataStructures {
   case class Tx(version:Long, ins:Ins, outs:Outs, wits:Wits, lockTime:Long, txid:String, isSegWit:Boolean, segWitTxHash:String, size:Int, vSize:Int) {
     def serialize = createSegWitTx(version, ins zip wits, outs, lockTime)
     override def toString = txid
+    // set replacable (Replace-By-Fee (RBF))
+    def setRBF = {
+      ins.foreach(_.setRBF)
+      this
+    }
+    
     def getHashSigned_P2PKH(whichInput:Int, inputAddress:String) = {
       val emptyIns = ins.map(in => new TxIn(in.txHash, in.vOut).setSeqNum(in.seqNum)) // empty = remove all scriptSigs (default is None)
       val (scriptPubKey, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(inputAddress)
