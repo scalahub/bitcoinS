@@ -67,7 +67,7 @@ object DataStructures {
       val outPoint = currIn.txHash.decodeHex.reverse ++ getFixedIntBytes(BigInt(currIn.vOut), 4)                
 
       val (scriptPubKey, isMainNetAddr) = getScriptPubKeyAndNetFromAddress(inputAddress)
-      if (isMainNetAddr != isMainNet) throw new Exception(s"MainNet mismatch between address and current setting") 
+      if (isMainNetAddr != isMainNet) throw new Exception(s"MainNet mismatch between $inputAddress (mainNet: $isMainNetAddr) and current setting (mainNet: $isMainNet)") 
 
       val scriptCode = scriptPubKey.size.toByte +: scriptPubKey
       val amt = getFixedIntBytes(value, 8) // unsigned

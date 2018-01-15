@@ -31,11 +31,11 @@ case class ECCPubKey(point:Point, compressed:Boolean) {
 
   import point._
   
-  val hex:String = {
+  lazy val hex:String = {
     if (compressed) {(if (yLowestSetBitIsZero) "03" else "02") + xHex}
     else "04"+xHex+yHex
   }
-  val bytes:Array[Byte] = {
+  lazy val bytes:Array[Byte] = {
     if (compressed) {(if (yLowestSetBitIsZero) 0x03.toByte else 0x02.toByte) +: xBytes}
     else 0x04.toByte +: (xBytes ++ yBytes)
   }

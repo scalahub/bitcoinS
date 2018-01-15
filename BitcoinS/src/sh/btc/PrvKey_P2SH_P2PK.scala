@@ -9,12 +9,12 @@ import sh.btc.DataStructures._
 
 class PrvKey_P2SH_P2PK(eccPrvKey:ECCPrvKey, mainNet:Boolean) extends PrvKey(eccPrvKey, mainNet) {
   lazy val pubKey = new PubKey_P2SH_P2PK(eccPrvKey.eccPubKey, mainNet)
-  import pubKey._
-  import eccPrvKey._
   // P2SH 3Address. This is NOT multisig, but simple Pay to Public Key described in BIP16 (https://github.com/bitcoin/bips/blob/master/bip-0016.mediawiki)
   def signTx(rawTx:Array[Byte], whichInputs:Seq[(Int, BigInt)]) = signTx_P2SH_P2PK(rawTx, whichInputs.unzip._1)
   
   def signTx_P2SH_P2PK(rawTx:Array[Byte], whichInputs:Seq[Int]) = { // which input indices to sign
+    import pubKey._
+    import eccPrvKey._
     val tx = new TxParser(rawTx).getTx // always parse as segwit, since we need to maintain witness data for possible mixed input tx
     whichInputs.map{i => 
       val txHash = tx.getHashSigned_P2SH_P2PK(i, redeemScript) // redeemScript is [pubKeySize] [pubKey] [checkSig]

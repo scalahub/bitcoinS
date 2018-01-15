@@ -146,6 +146,19 @@ object Util {
   }
   
   def recoverPubKey(recoverySig:Array[Byte], hash:Array[Byte]) = {
+  /* https://gist.github.com/scalahub/c5801a939f042d092b82f87f2e2ff1db
+`recid`'s encoding might be one of the following:
+
+```
+0x1B ->  R_y even | R_x < n | P uncompressed
+0x1C ->  R_y odd  | R_x < n | P uncompressed
+0x1D ->  R_y even | R_x > n | P uncompressed
+0x1E ->  R_y odd  | R_x > n | P uncompressed
+0x1F ->  R_y even | R_x < n | P compressed
+0x20 ->  R_y odd  | R_x < n | P compressed
+0x21 ->  R_y even | R_x > n | P compressed
+0x22 ->  R_y odd  | R_x > n | P compressed
+```   */
     val (byteIndex, r, s) = decodeRecoverySig(recoverySig)
     val actualIndex = byteIndex % 4 // mod 4 (max 4 distinct keys can be recovered)
     recoverPubKeyPoints(r, s, hash).zipWithIndex.collect{
@@ -160,19 +173,5 @@ object Util {
 
   def getMessageToSignBitcoinD(message:String) = 
     Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
-  
-  
-  /* https://gist.github.com/scalahub/c5801a939f042d092b82f87f2e2ff1db
-`recid`'s encoding might be one of the following:
 
-```
-0x1B ->  R_y even | R_x < n | P uncompressed
-0x1C ->  R_y odd  | R_x < n | P uncompressed
-0x1D ->  R_y even | R_x > n | P uncompressed
-0x1E ->  R_y odd  | R_x > n | P uncompressed
-0x1F ->  R_y even | R_x < n | P compressed
-0x20 ->  R_y odd  | R_x < n | P compressed
-0x21 ->  R_y even | R_x > n | P compressed
-0x22 ->  R_y odd  | R_x > n | P compressed
-```   */
 }

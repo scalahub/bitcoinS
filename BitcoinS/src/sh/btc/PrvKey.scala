@@ -10,6 +10,40 @@ import sh.util.BytesUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
 
+/* Explanation: object PrvKey is a companion to class PrvKey
+      
+        PrvKey (abstract class) constructor has two things:
+        1. ECCPrvKey 
+        2. Boolean indicating MainNet (true) or TestNet3 (false)
+                        
+          ECCPrvKey constructor has two things:
+          1. BigInt (the actual private key)
+          2. Boolean indicating compressed (false) or uncompressed (true)
+        -------------------------------------------
+        PrvKey has 4 concrete subclasses
+          PrvKey_P2PKH
+          PrvKey_P2SH_P2PK
+          PrvKey_P2SH_P2WPKH
+          PrvKey_P2PKH_UAHF
+        -------------------------------------------
+        PrvKey also encapsulates: 
+          PubKey (abstract class), whose constructor has two things
+          1. ECCPubKey 
+          2. Boolean indicating MainNet (true) or TestNet3 (false)
+
+          ECCPubKey constructor has two things:
+          1. Point (the actual EC point)
+          2. Boolean indicating compressed (false) or uncompressed (true)
+        -------------------------------------------
+        PubKey has 4 concrete subclasses, one corresponding to each subclass of PrvKey
+          PubKey_P2PKH
+          PubKey_P2SH_P2PK
+          PubKey_P2SH_P2WPKH
+          PubKey_P2PKH_UAHF
+        -------------------------------------------
+        PubKey also encapsulates: 
+          Address (string) depending on the type of network, compression used and subclass pf PubKey
+ */
 object PrvKey {
   private def getECCPrvKeyAndNet(wif:String) = {
     val bytes = Base58Check.decodePlain(wif).dropRight(4)

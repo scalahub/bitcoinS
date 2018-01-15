@@ -11,11 +11,11 @@ import sh.util.BigIntUtil._
 class PrvKey_P2SH_P2WPKH (bigInt:BigInt, mainNet:Boolean) extends PrvKey(new ECCPrvKey(bigInt, true), mainNet) {
    
   lazy val pubKey = new PubKey_P2SH_P2WPKH(eccPrvKey.eccPubKey.point, mainNet)
-  import pubKey._
-  import eccPrvKey._
   // SEGWIT 3Address
   
   def signTx(rawTx:Array[Byte], whichInputsAmts:Seq[(Int, BigInt)]) = { // which input indices to sign, with amount
+    import pubKey._
+    import eccPrvKey._
     val tx = new TxParser(rawTx).getTx
     whichInputsAmts.map{
       case (i, value) => 

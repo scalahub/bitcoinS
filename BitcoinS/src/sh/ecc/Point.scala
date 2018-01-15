@@ -35,6 +35,7 @@ case class Point(x:BigInt, y:BigInt) {
   }
   
   def * (i:BigInt):Point = {
+    if (i == 0) throw PointAtInfinityException
     val str = i.toString(2)
     val binary = str.map{
       case '0' => false

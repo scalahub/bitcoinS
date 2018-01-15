@@ -14,10 +14,10 @@ case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
   if (bigInt >= n) throw new Exception(s"Private key must be < $n")
   if (bigInt <= 0) throw new Exception(s"Private key must be > 0")
 
-  val eccPubKey = new ECCPubKey(bigInt * G, compressed) // G is generator of EC
+  lazy val eccPubKey = new ECCPubKey(bigInt * G, compressed) // G is generator of EC
 
-  val hex = bigInt.toHex(32)
-  val bytes = hex.decodeHex 
+  lazy val hex = bigInt.toHex(32)
+  lazy val bytes = hex.decodeHex 
   
   
   // returns (k, r) in a deterministic way from hash. Requires that hash is already input as 256 bit value, possibly dsha256(msg) 
