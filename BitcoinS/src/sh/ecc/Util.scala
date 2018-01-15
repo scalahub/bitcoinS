@@ -126,8 +126,6 @@ object Util {
   }
 
   def encodeRecoverySigForIndex(byteIndex:Int, r:BigInt, s:BigInt) = {
-    assert(byteIndex >= 0)
-    assert(byteIndex < 8)
     val rBytes = r.toBytes
     val sBytes = s.toBytes
     Array(recoveryEncoding(byteIndex)) ++ 

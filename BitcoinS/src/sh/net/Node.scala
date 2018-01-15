@@ -31,15 +31,34 @@ trait Node extends EventListener {
   private def await[T](future:Future[Any]) = Await.result(future, timeout.duration).asInstanceOf[T]
 
   // below commands to be exposed 
+   
+  // Below methods make blocking calls to PeerGroup (Actor). 
+  // these can result in blocking the application. Left only for testing. 
+  @deprecated("Use method ending in Async", "15 Jan 2018")
   def start(relay:Boolean = true) = seeds.map(connectTo(_, relay))
-
-  def stop = await[String](peerGroup ? "disconnect")
-    
-  def connectTo(hostName:String, relay:Boolean = true):String = await[String](peerGroup ? ("connect", hostName, relay))
   
+  @deprecated("Use method ending in Async", "15 Jan 2018")
+  def stop = await[String](peerGroup ? "disconnect")
+  
+  @deprecated("Use method ending in Async", "15 Jan 2018")
+  def connectTo(hostName:String, relay:Boolean = true):String = await[String](peerGroup ? ("connect", hostName, relay))
+    
+  @deprecated("Use method ending in Async", "15 Jan 2018")
   def disconnectFrom(hostName:String):String = await[String](peerGroup ? ("disconnect", hostName))
   
+  @deprecated("Use method ending in Async", "15 Jan 2018")
   def pushTx(tx:Tx):String = await[String](peerGroup ? ("push", tx))
+  
+  // Use below methods only (they make async calls to PeerGroup)
+  def startAsync(relay:Boolean = true) = seeds.map(connectToAsync(_, relay))
+
+  def stopAsync = peerGroup ! "disconnect"
+    
+  def connectToAsync(hostName:String, relay:Boolean = true) = peerGroup ! ("connect", hostName, relay)
+  
+  def disconnectFromAsync(hostName:String) = peerGroup ? ("disconnect", hostName)
+
+  def pushTxAsync(tx:Tx) = peerGroup ! ("push", tx)
   
   def getBlock(hash:String):Blk = await[Blk](peerGroup ? ("getblock", hash))
   

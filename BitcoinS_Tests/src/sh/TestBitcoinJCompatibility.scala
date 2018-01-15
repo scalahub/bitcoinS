@@ -9,7 +9,6 @@ import org.bitcoinj.crypto.TransactionSignature
 import org.bitcoinj.params._
 import org.bitcoinj.script.ScriptBuilder
 import sh.btc.BitcoinS._
-import sh.btc.BitcoinS._
 import sh.btc.DataStructures._
 import sh.btc._
 import sh.ecc._
@@ -68,7 +67,7 @@ object TestBitcoinJCompatibility extends App {
         }
         new TxOut(addr, amt)
       }
-      val sTx = new TxParser(createNonSegWitTxRaw(ins.unzip3._2, outs)).getTx.setRBF.serialize
+      val sTx = new TxParser(createTxRaw(ins.unzip3._2, outs)).getTx.setRBF.serialize
       val jTx = createJTx(ins.unzip3._2, outs)
       assert(jTx.bitcoinSerialize.encodeHex == sTx.encodeHex)
       val ssTx = ins.unzip3._1.zipWithIndex.foldLeft(sTx){case (oldTx, (key, i)) => key.signTx(oldTx, i, 10000000000000L)} 

@@ -3,10 +3,13 @@ package sh.net
 import sh.btc.DataStructures.{ Blk, Tx }
 import sh.net.DataStructures._
 import sh.net.Payloads._
+import sh.net.NetUtil._
 import sh.util.StringUtil._
+import sh.util.AkkaUtil._
 import akka.actor.Status._
 import akka.actor.{ Actor, ActorRef, Props, Terminated }
 import scala.collection.mutable.{Map => MMap}
+import scala.concurrent.duration._
 
 /*
  * P2P network design is as follows (refer to the figure below):
@@ -25,13 +28,13 @@ import scala.collection.mutable.{Map => MMap}
  *  ? is a blocking message passing to actor
  * 
  * 
- *                                                       |<---!--->  Peer1 <-----tcp----> remotePeer1
+ *                                                       |<---!--->  Peer1 <----tcp----> remotePeer1
  *                                                       |
- *                                                       |<---!--->  Peer2 <-----tcp----> remotePeer2
+ *                                                       |<---!--->  Peer2 <----tcp----> remotePeer2
  *  App  <---m--->  Node  <---!--or--?--->  PeerGroup ---|
- *                                                       |<---!--->  Peer3 <-----tcp----> remotePeer3
+ *                                                       |<---!--->  Peer3 <----tcp----> remotePeer3
  *                                                       |
- *                                                       |<---!--->  Peer4 <-----tcp----> remotePeer4 
+ *                                                       |<---!--->  Peer4 <----tcp----> remotePeer4 
  *                                                       |
  *                                                       |...
  *                                                       
@@ -49,20 +52,35 @@ trait EventListener {
 import PeerGroup._
 
 class PeerGroup(listener:EventListener) extends Actor {
+  type Time = Long // millis
+  type BlockHash = String
+  type PrevBlockHash = String
+  type TxID = String
+  type HostName = String
   
-  var peers = MMap[String, ActorRef]()
+  var peers = MMap[HostName, (ActorRef, Time)]()
   
-  val pushedTx = MMap[String, Tx]() // txid -> tx // will need to periodically clear
+  val pushedTx = MMap[TxID, (Tx, Time)]() // txid -> tx // will need to periodically clear
   
-  val seenTx = MMap[String, Tx]() // txid -> tx // txs seen by us AND network
+  val seenTx = MMap[TxID, (Tx, Time)]() // txid -> tx // txs seen by us AND network
 
-  val unknownTxHashes = MMap[String, ActorRef]() // txid -> peer // txs seen by network but not by us. Will store the txids received from INV messages
+  val unknownTxHashes = MMap[TxID, (ActorRef, Time)]() // txid -> peer // txs seen by network but not by us. Will store the txids received from INV messages
   // also stores who is the first peer that sent us that inv
   
-  val seenBlkHashes = MMap[String, String]() // blk hash => prev blk hash // block hashes seen by us
+  val seenBlkHashes = MMap[BlockHash, (PrevBlockHash, Time)]() // blk hash => prev blk hash // block hashes seen by us
   
-  val getBlockReq = MMap[String, ActorRef]() // blockhash -> local actor (app) that asked for it
+  val getBlockReq = MMap[BlockHash, (ActorRef, Time)]() // blockhash -> local actor (app) that asked for it
 
+  // clear based on how old the entry is
+  doEvery5Mins{
+    val now = getTimeMillis
+    getBlockReq.retain{case (_, (_, time)) => time > (now - FiveMins)}
+    seenBlkHashes.retain{case (_, (_, time)) => time > (now - OneDay)}
+    unknownTxHashes.retain{case (_, (_, time)) => time > (now - FiveMins)} // retain unknown hashes for 5 mins
+    seenTx.retain{case (_, (_, time)) => time > (now - FiveMins)} // retain seen txs for 5 mins
+    pushedTx.retain{case (_, (_, time)) => time > (now - FifteenMins)} // retain pushed txs for 15 mins
+  }
+  
   def usingFailure[T](failCondition:Boolean)(failMsg:String)(f: => T):Status = 
     if (failCondition) 
       Failure(new Exception(failMsg)) 
@@ -76,12 +94,14 @@ class PeerGroup(listener:EventListener) extends Actor {
   
   def receive = {
     // Below messages are received from a Node object
-    case "getpeers" => sender ! peers.keys.toArray // from Node (app made a getpeers req) 
+    case "getpeers" =>  // from Node (app made a getpeers req) 
+      val now = getTimeMillis
+      sender ! peers.map{case (hostName, (_, time)) => s"$hostName (${((now - time)/100)}) seconds"}.toArray
       
     case ("connect", hostName:String, relay:Boolean) => // from Node (app made a connect req)
       sender ! usingFailure(peers.contains(hostName))(s"Already conntected to $hostName"){
         val peer = Peer.connectTo(hostName, self, relay)
-        peers += (hostName -> peer)
+        peers += (hostName -> (peer, getTimeMillis))
         // https://doc.akka.io/docs/akka/2.3.4/scala/actors.html#Lifecycle_Monitoring_aka_DeathWatch
         context.watch(peer) // new peerActor created, add to watched peers
         "ok"
@@ -89,21 +109,22 @@ class PeerGroup(listener:EventListener) extends Actor {
       
     case ("disconnect", hostName:String) => // from Node (app made a disconnect req)
       sender ! usingFailure(!peers.contains(hostName))(s"Not conntected to $hostName"){
-        peers.get(hostName).map(_ ! "stop")
+        peers.get(hostName).map{case (peer, time) => peer ! "stop"}
         "ok"
       }
     
     case ("push", tx:Tx) =>  // from Node (app has send us a "push" tx request (via Node) and we need to send it to others)
       usingConnectedAsync{
-        pushedTx += tx.txid -> tx // add to push tx map
-        peers.values.foreach(_ ! PushTxInvMsg(tx.txid)) // send to all
+        pushedTx += tx.txid -> (tx, getTimeMillis) // add to push tx map
         sender ! Success(tx.txid)
+        peers.values.foreach{case (peer, time) => peer ! PushTxInvMsg(tx.txid)} // send to all
       }
         
     case ("getblock", hash:String) => // from Node (app has made a req (via Node) to get a block)
       usingConnectedAsync{
-        getBlockReq += hash -> sender
-        peers.head._2 ! new GetDataMsg(hash) // send only to first peer as of now
+        getBlockReq += hash -> (sender, getTimeMillis)
+        val (hostName, (peer, time)) = peers.head 
+        peer ! new GetDataMsg(hash) // send only to first peer as of now
       }
     
     case blk:Blk => // received from REMOTE via a Peer
@@ -117,13 +138,13 @@ class PeerGroup(listener:EventListener) extends Actor {
         //    difficulty and height validation
         //    hardcode valid blocks from main chain
         //    
-        getBlockReq.get(blk.hash).map{actorRef => // for any pending "getBlock" requests, 
+        getBlockReq.get(blk.hash).map{case (actorRef, time) => // for any pending "getBlock" requests, 
           getBlockReq -= blk.hash // remove from pending "getBlock" requests
           actorRef ! Success(blk) // respond to appropriate caller
         }.getOrElse{
           // we are also maintaining a list of block hashes seen by this PeerGroup
           if (!seenBlkHashes.contains(blk.hash)) { // if we have not seen this hash
-            seenBlkHashes += (blk.hash -> blk.prevBlockHash) // add to seenHashes
+            seenBlkHashes += (blk.hash -> (blk.prevBlockHash, getTimeMillis)) // add to seenHashes
             listener.onBlkMap.foreach(_._2(blk)) // invoke listeners in Node 
           }
         }
@@ -136,14 +157,14 @@ class PeerGroup(listener:EventListener) extends Actor {
       if (unknownTxHashes.contains(tx.txid)) { // unknownhashes will contain txid if we have made made a getdata req, as a response to inv command
         unknownTxHashes -= tx.txid // remove from unknown tx.. We will not process this again
         listener.onTxMap.foreach(_._2(tx)) // invoke listeners in Node
-        seenTx += tx.txid -> tx // add to seen tx so we don't process it again (note: both seen and unknown must be flushed regularly)
+        seenTx += tx.txid -> (tx, getTimeMillis) // add to seen tx so we don't process it again (note: both seen and unknown must be flushed regularly)
         // todo: validate tx,  push to other peers and invoke handler onTx
       }
 
     case ("getdata", inv:InvPayload) => // from peerActor (getData request received from remote side)
       inv.invVectors.collect{ 
         case InvVector(MSG_TX, char32) => // as of now, remote can only request for tx that we originate (i.e. in pushedTx)
-          pushedTx.get(char32.rpcHash).map{tx => 
+          pushedTx.get(char32.rpcHash).map{case (tx, time) => 
             sender ! TxMsg(tx)
           } // send the Tx 
       }    
@@ -158,7 +179,7 @@ class PeerGroup(listener:EventListener) extends Actor {
           false
         case InvVector(MSG_TX, char32) if seenTx.contains(char32.rpcHash) => false 
         case InvVector(MSG_TX, char32) => 
-          unknownTxHashes += (char32.rpcHash -> sender) // we have not seen the tx but may have seen the txid. Add it again anyway to be sure
+          unknownTxHashes += (char32.rpcHash -> (sender, getTimeMillis)) // we have not seen the tx but may have seen the txid. Add it again anyway to be sure
           true
         case _ => false
       } 
@@ -173,17 +194,19 @@ class PeerGroup(listener:EventListener) extends Actor {
         case _ => true
       }
 
-    case "stop" =>
-      println("Received stop signal")
-      peers.foreach(_._2 ! "stop")
-      context.stop(self)
-      sender ! "Stopping peers and peergroup"
-      
     case "disconnect" =>
       println("Received disconnect signal")
-      peers.foreach(_._2 ! "stop")
+      disconnectPeers
       sender ! "Stopping peers"
+
+    case "stop" =>
+      println("Received stop signal")
+      disconnectPeers
+      sender ! "Stopping peers and peergroup"
+      context.stop(self)
+      
     case _ =>
   }
+  private def disconnectPeers = peers.foreach{case (hostName, (peer, time)) => peer ! "stop"}
 }
 

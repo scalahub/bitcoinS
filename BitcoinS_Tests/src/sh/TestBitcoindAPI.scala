@@ -12,9 +12,10 @@ import sh.util.Json2XML
 import sh.btc.BitcoinS._
 
 object TestBitcoindAPI extends App {
-  val mainNet = false
+  val mainNet = true
   val compressed = true
-  val b = new BitcoindAPI("user", "password", "http://localhost:8332")
+  //val b = new BitcoindAPI("user", "password", "http://localhost:8332")
+  val b = new BitcoindAPI("96Ew2gw67ny5J2vazXCW", "5rW79V2cfZqeQ935cGCyjHBNhnPcWEv8Mg7", "https://54.169.160.38:33565")
   
   1 to 10000 foreach {i =>
     val eccPrvKey = new ECCPrvKey(i * 1000, compressed)

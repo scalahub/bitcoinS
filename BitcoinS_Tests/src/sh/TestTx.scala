@@ -140,7 +140,7 @@ object TestSegWit {
   
   //val tx0 = createSegWitTxRaw(Seq(in0,in1,in2,in3,in4,in5,in6), Seq(out1)) // unsigned tx
   // should also work with the initial tx is nonsegwit
-  val tx0 = createNonSegWitTxRaw(Seq(in0,in1,in2,in3,in4,in5,in6), Seq(out1)) // unsigned tx
+  val tx0 = createTxRaw(Seq(in0,in1,in2,in3,in4,in5,in6), Seq(out1)) // unsigned tx
   val tx1 = p2pkh_key.signTx_P2PKH (tx0, Seq(0, 2, 5)) // inputs 0, 2, 5 are P2PKH 
   val tx2 = p2wpkh_key.signTx(
     tx1, Seq(
@@ -187,7 +187,7 @@ object TestP2PKH {
   // the following output was used to test
   // Note 2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF faucet address
   val out1 = TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  48700000)
-  val tx = createNonSegWitTxRaw(Seq(in1, in2), Seq(out1))
+  val tx = createTxRaw(Seq(in1, in2), Seq(out1))
   val signed = p2pkhKey.signTx_P2PKH(tx, Seq(0, 1)) // inputs 0 and 1 are P2PKH inputs
   val parsed = new TxParser(signed).getTx
   // println("Hex: "+signed.encodeHex)
@@ -211,7 +211,7 @@ object TestP2PKHPushTx extends App {
   // the following output was used to test
   // Note 2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF faucet address
   val out1 = TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  129000000)
-  val tx = createNonSegWitTxRaw(Seq(in1), Seq(out1))
+  val tx = createTxRaw(Seq(in1), Seq(out1))
   val signed = p2pkhKey.signTx_P2PKH(tx, Seq(0)) // input 0  is P2PKH inputs
   val parsed = new TxParser(signed).getTx
   println("Hex: "+signed.encodeHex)
@@ -237,7 +237,7 @@ object TestP2SH_P2PK {
   // the following output was used to test
   // Note 2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF faucet address
   val out2 = TxOut(Some("2N8hwP1WmJrFF5QWABn38y63uYLhnJYJYTF"),  172000000)
-  val tx = createNonSegWitTxRaw(Seq(in2, in3, in4), Seq(out2))
+  val tx = createTxRaw(Seq(in2, in3, in4), Seq(out2))
   val tx1 = p2shKey.signTx_P2SH_P2PK(tx, Seq(0))
   val tx2 = p2pkhKey.signTx_P2PKH(tx1, Seq(1, 2))
   val signed = tx2.encodeHex  
@@ -271,7 +271,7 @@ object TestMixedOutputs {
         val vOut = j
         TxIn(hash, vOut)        
       }
-      val raw = createNonSegWitTxRaw(ins, outs)
+      val raw = createTxRaw(ins, outs)
       val tx = new TxParser(raw).getTx
       //println("Hex: "+tx.serialize.encodeHex)
       tx.outs zip outs foreach{

@@ -27,12 +27,13 @@ object BitcoinS {
     getKnownScriptPubKey(spk).nonEmpty && isMainNetAddress
   } catch {case a:Any => false}
   
-  def createNonSegWitTxRaw(ins:Seq[TxIn], outs:Seq[TxOut]) = 
-    createNonSegWitTx(defaultTxVersion, ins, outs, defaultTxLockTime)
-  
   // wrapper over "Advanced", that uses default version, locktime and sets witnesses to empty 
-  def createSegWitTxRaw(ins:Seq[TxIn], outs:Seq[TxOut]):Array[Byte] = 
-    createSegWitTx(defaultTxVersion, ins.map((_, TxWit(Nil))), outs, defaultTxLockTime)
+  def createTxRaw(ins:Seq[TxIn], outs:Seq[TxOut]) = createNonSegWitTx(defaultTxVersion, ins, outs, defaultTxLockTime)
+  
+  def signTx(unsignedTx:Array[Byte], inKeysAmts:Seq[(PrvKey, BigInt)]) = 
+    inKeysAmts.zipWithIndex.foldLeft(unsignedTx){
+      case (prevTx, ((key, amt), i)) => key.signTx(prevTx, i, amt)
+    }
   
   /* // below is another wrapper, commented out because unused (and should never be needed)
   def createSegWitTxRaw(insWits:Seq[(In, Wit)], outs:Seq[Out]) = 

@@ -236,7 +236,7 @@ Value	Storage length	Format
     hex.grouped(2).toSeq.reverse.mkString.decodeHex
   }
   
-  def createNonSegWitTx(version:Long, ins:Seq[TxIn], outs:Seq[TxOut], lockTime:Long) = 
+  protected [sh] def createNonSegWitTx(version:Long, ins:Seq[TxIn], outs:Seq[TxOut], lockTime:Long) = 
     createSegWitTx(version, ins map {in => (in, TxWit(Nil))}, outs, lockTime)
   
   def createSegWitTx(version:Long, insWits:Seq[(TxIn, TxWit)], outs:Seq[TxOut], lockTime:Long) = {    // inputs also contains amount

@@ -2,7 +2,6 @@
 package sh.net
 
 import java.net.InetSocketAddress
-import java.net.Socket
 import sh.btc.BitcoinS._
 import sh.util.StringUtil._
 import sh.net.DataStructures._
@@ -40,7 +39,7 @@ object Payloads {
     nonce.bytes ++ getVarStringBytes(userAgent) ++ startHeight.bytes ++ relay.bytes
   ) {
     def this(local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean) = this(
-      ourVersion, BigInt(0), getTime, 
+      ourVersion, BigInt(0), getTimeSec, 
       new NetAddrPayload(local.getAddress.getAddress, local.getPort, true),
       new NetAddrPayload(remote.getAddress.getAddress, remote.getPort, true),
       BigInt(nonce.getAndIncrement), defaultUserAgent, 1, relay
@@ -55,8 +54,8 @@ object Payloads {
     val addressBytes:Seq[Byte] = if (isIPv6) address else ipv4to6prefix ++ address 
     val timeBytes:Seq[Byte] = (if (isVersionMsg) Nil else time.bytes)
   } with Payload(timeBytes ++ services.uint64.bytes ++ addressBytes ++ port.bytes) {
-    def this(address:Array[Byte], port:Int, isVersionMsg:Boolean) = this(getTime, BigInt(0), address, port)(isVersionMsg)
-    def this(address:Array[Byte], port:Int) = this(getTime, BigInt(0), address, port)(false)
+    def this(address:Array[Byte], port:Int, isVersionMsg:Boolean) = this(getTimeSec, BigInt(0), address, port)(isVersionMsg)
+    def this(address:Array[Byte], port:Int) = this(getTimeSec, BigInt(0), address, port)(false)
     if (address.size != 4 && address.size != 16) throw new Exception("Invalid bytes for address: "+address.encodeHex)
   }
 }

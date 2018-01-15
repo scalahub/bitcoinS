@@ -19,7 +19,8 @@ object NetUtil {
     if (bytes.size > size) throw new Exception(s"String is too big for $size bytes")
     bytes ++ Seq.fill(size - bytes.size)(0x00.toByte)
   }
-  def getTime = System.currentTimeMillis/1000
+  def getTimeSec = getTimeMillis/1000
+  def getTimeMillis = System.currentTimeMillis
   
   val MagicMainNet = "F9BEB4D9".decodeHex
   val MagicTestNet3 = "0B110907".decodeHex

@@ -15,7 +15,7 @@ import Payloads._
 object Parsers {
   
   class MsgParser(val bytes:ByteString) {
-    require(bytes.nonEmpty) // sanity check for testing
+    //require(bytes.nonEmpty) // sanity check for testing
     val result:Option[(P2PHeader, Option[ByteString])] = new HeaderParser(bytes).header.map(h => (h, new PayloadParser(bytes.drop(headerLen).take(h.payloadLen), h).result))
   }
   
