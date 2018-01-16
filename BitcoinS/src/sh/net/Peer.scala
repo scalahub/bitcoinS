@@ -70,7 +70,7 @@ class Peer(peerGroup:ActorRef, relay:Boolean) extends Actor {
     case "stop" => // someone sent this actor a shutdown signal 
       println(s"Peer received stop signal: $peer")
       optClientActor.map(_ ! "close")  // ask client to disconnect
-      context.stop(self)
+      //context.stop(self)
     
     case any => println(s"Peer got unknown message: [$any] from [$sender]")
   }

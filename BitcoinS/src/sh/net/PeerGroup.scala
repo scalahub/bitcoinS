@@ -93,40 +93,6 @@ class PeerGroup(listener:EventListener) extends Actor {
   }
   
   def receive = {
-    // Below messages are received from a Node object
-    case "getpeers" =>  // from Node (app made a getpeers req) 
-      val now = getTimeMillis
-      sender ! peers.map{case (hostName, (_, time)) => s"$hostName (${((now - time)/100)}) seconds"}.toArray
-      
-    case ("connect", hostName:String, relay:Boolean) => // from Node (app made a connect req)
-      sender ! usingFailure(peers.contains(hostName))(s"Already conntected to $hostName"){
-        val peer = Peer.connectTo(hostName, self, relay)
-        peers += (hostName -> (peer, getTimeMillis))
-        // https://doc.akka.io/docs/akka/2.3.4/scala/actors.html#Lifecycle_Monitoring_aka_DeathWatch
-        context.watch(peer) // new peerActor created, add to watched peers
-        "ok"
-      }
-      
-    case ("disconnect", hostName:String) => // from Node (app made a disconnect req)
-      sender ! usingFailure(!peers.contains(hostName))(s"Not conntected to $hostName"){
-        peers.get(hostName).map{case (peer, time) => peer ! "stop"}
-        "ok"
-      }
-    
-    case ("push", tx:Tx) =>  // from Node (app has send us a "push" tx request (via Node) and we need to send it to others)
-      usingConnectedAsync{
-        pushedTx += tx.txid -> (tx, getTimeMillis) // add to push tx map
-        sender ! Success(tx.txid)
-        peers.values.foreach{case (peer, time) => peer ! PushTxInvMsg(tx.txid)} // send to all
-      }
-        
-    case ("getblock", hash:String) => // from Node (app has made a req (via Node) to get a block)
-      usingConnectedAsync{
-        getBlockReq += hash -> (sender, getTimeMillis)
-        val (hostName, (peer, time)) = peers.head 
-        peer ! new GetDataMsg(hash) // send only to first peer as of now
-      }
-    
     case blk:Blk => // received from REMOTE via a Peer
       /* from a Peer. One of the peers has sent us a block, either as a response to a "getBlock" request issued by Node, 
          or as a resp to a "getblock" request issued by this peerGroupActor (which was resulting from a inv message received from the peer's remote node) */
@@ -187,26 +153,60 @@ class PeerGroup(listener:EventListener) extends Actor {
       if (invToSend.nonEmpty) sender ! GetDataMsg(invToSend) // send the getdata command for the data we need
       
     case Terminated(ref) => // DeathWatch 
-      peers = peers.filter{
+      peers = peers.filterNot{
         case (host, `ref`) => 
           println(s"[watcher] Peer terminated $host")
           false
         case _ => true
       }
+      
+      
+      
+      
+    // Below messages are received from a Node object
+    case ("pushtx", tx:Tx) =>  // from Node (app has send us a "push" tx request (via Node) and we need to send it to others)
+      usingConnectedAsync{
+        pushedTx += tx.txid -> (tx, getTimeMillis) // add to push tx map
+        sender ! Success(tx.txid)
+        peers.values.foreach{case (peer, time) => peer ! PushTxInvMsg(tx.txid)} // send to all
+      }
+        
+    case ("getblock", hash:String) => // from Node (app has made a req (via Node) to get a block)
+      usingConnectedAsync{
+        getBlockReq += hash -> (sender, getTimeMillis)
+        val (hostName, (peer, time)) = peers.head 
+        peer ! new GetDataMsg(hash) // send only to first peer as of now
+      }
+    
+    case "getpeers" =>  // from Node (app made a getpeers req) 
+      val now = getTimeMillis
+      sender ! peers.map{case (hostName, (_, time)) => s"$hostName (${((now - time)/100)}) seconds"}.toArray
+      
+    case (m@("connect"|"connectAsync"), hostName:String, relay:Boolean) => // from Node (app made a connect req)
+      val resp = usingFailure(peers.contains(hostName))(s"Already conntected to $hostName"){
+        val peer = Peer.connectTo(hostName, self, relay)
+        peers += (hostName -> (peer, getTimeMillis))
+        // https://doc.akka.io/docs/akka/2.3.4/scala/actors.html#Lifecycle_Monitoring_aka_DeathWatch
+        context.watch(peer) // new peerActor created, add to watched peers
+        "ok"
+      }
+      if (m == "connect") sender ! resp
+      
+    case (m@("disconnect"|"disconnectAsync"), hostName:String) => // from Node (app made a disconnect req)
+      val resp = usingFailure(!peers.contains(hostName))(s"Not conntected to $hostName"){
+        peers.get(hostName).map{case (peer, time) => peer ! "stop"}
+        peers -= hostName
+        "ok"
+      }
+      if (m == "disconnect") sender ! resp
+    
 
-    case "disconnect" =>
+    case m@("stop"|"stopAsync") =>
       println("Received disconnect signal")
-      disconnectPeers
-      sender ! "Stopping peers"
-
-    case "stop" =>
-      println("Received stop signal")
-      disconnectPeers
-      sender ! "Stopping peers and peergroup"
-      context.stop(self)
+      peers.foreach{case (hostName, (peer, time)) => peer ! "stop"}
+      if (m == "stop") sender ! "Stopping peers"
       
     case _ =>
   }
-  private def disconnectPeers = peers.foreach{case (hostName, (peer, time)) => peer ! "stop"}
 }
 
