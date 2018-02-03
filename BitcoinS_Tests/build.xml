@@ -5,6 +5,22 @@
 <project name="BitcoinS_Tests" default="default" basedir=".">
     <description>Builds, tests, and runs the project BitcoinS_Tests.</description>
     <import file="nbproject/build-impl.xml"/>
+	<target name="jarjar" depends="jar">
+		<taskdef name="jarjar" classname="com.tonicsystems.jarjar.JarJarTask" classpath="lib/jarjar.jar"/>
+		<jarjar manifest="manifest.mf" destfile="${dist.dir}/jarjar.jar">
+			<zipgroupfileset dir="${dist.dir}/lib/" includes="*.jar"/>
+			<!--<zipgroupfileset excludes="META-INF/**/*" dir="${dist.dir}/lib/" includes="*.jar"/>-->
+			<manifest>
+				<attribute name="Main-Class" value="sh.TestBitcoindRPC"/>
+			</manifest>
+			<!--
+			<fileset dir=".">
+				<include name="${build.classes.dir}/*.class"/>
+			</fileset>
+			-->
+			<fileset dir="build/classes"/>
+		</jarjar>
+	</target>
 
 <!--
     There exist several targets which are by default empty and which can be 

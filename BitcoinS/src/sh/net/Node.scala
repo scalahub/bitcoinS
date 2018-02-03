@@ -5,6 +5,8 @@ import akka.util.Timeout
 import scala.concurrent.{Await, Future}
 import sh.btc.DataStructures._
 import akka.actor.ActorSystem
+import sh.btc.TxParser
+import sh.util.StringUtil._
 
 trait Node extends EventListener {
 
@@ -35,6 +37,8 @@ trait Node extends EventListener {
   // below methods need to be sync
   def pushTx(tx:Tx):String = await[String](peerGroup ? ("pushtx", tx))
   
+  def pushTx(hex:String):String = pushTx(new TxParser(hex.decodeHex).getTx)
+  
   def getBlock(hash:String):Blk = await[Blk](peerGroup ? ("getblock", hash))
  
   def getPeers = await[Array[String]](peerGroup ? "getpeers")
@@ -42,10 +46,10 @@ trait Node extends EventListener {
   // Below methods make blocking calls to PeerGroup (Actor). 
   // these can result in blocking the application. Left only for testing. 
   @deprecated("Use method ending in Async", "15 Jan 2018")
-  def start(relay:Boolean = true) = seeds.map(connectTo(_, relay))
+  def connectToAllSeeds(relay:Boolean = true) = seeds.map(connectTo(_, relay))
   
   @deprecated("Use method ending in Async", "15 Jan 2018")
-  def stop = await[String](peerGroup ? "stop")
+  def disconnectFromAll = await[String](peerGroup ? "stop")
   
   @deprecated("Use method ending in Async", "15 Jan 2018")
   def connectTo(hostName:String, relay:Boolean = true):String = await[String](peerGroup ? ("connect", hostName, relay))
@@ -56,9 +60,9 @@ trait Node extends EventListener {
 
   // Use below methods only (they make async calls to PeerGroup)
 
-  def startAsync(relay:Boolean = true) = seeds.map(connectToAsync(_, relay))
+  def connectToAllSeedsAsync(relay:Boolean = true) = seeds.map(connectToAsync(_, relay))
 
-  def stopAsync = peerGroup ! "stopAsync"
+  def disconnectFromAllAsync = peerGroup ! "stopAsync"
     
   def connectToAsync(hostName:String, relay:Boolean = true) = peerGroup ! ("connectAsync", hostName, relay)
   

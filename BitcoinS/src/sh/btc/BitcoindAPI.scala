@@ -1,14 +1,20 @@
 package sh.btc
 
+import org.apache.commons.io.IOUtils
 import sh.btc.DataStructures._
 import sh.util._
+import java.io.StringWriter
 import java.net.Authenticator
+import java.net.HttpURLConnection
 import java.net.PasswordAuthentication
+import java.net.URL
 import java.util.concurrent.atomic.AtomicLong
 import sh.ecc.Util._
 import sh.util.BytesUtil._
+import sh.util.CommonUtil._
 import sh.util.StringUtil._
 import sh.util.BigIntUtil._
+import Json2XML._
 
 // Basic API for talking to bitcoind, if needed, say to scan blockchain or broadcast tx
 class BitcoindAPI(rpcuser:String, rpcpassword:String, rpcHost:String) {
@@ -22,16 +28,43 @@ class BitcoindAPI(rpcuser:String, rpcpassword:String, rpcHost:String) {
   val ctr = new AtomicLong(0)
   def id = ctr.incrementAndGet
   
+  def curl(jsonEncodedString:String) = synchronized {
+    val httpcon = new URL(rpcHost).openConnection.asInstanceOf[HttpURLConnection]
+    httpcon.setDoOutput(true);
+    httpcon.setRequestProperty("Content-Type", "application/json");
+    httpcon.setRequestProperty("Accept", "application/json");
+    httpcon.setRequestProperty("Connection", "close");      
+    httpcon.setRequestMethod("POST");
+    httpcon.connect  
+    val outputBytes = jsonEncodedString.getBytes("UTF-8");
+    using(httpcon.getOutputStream){os =>
+      os.write(outputBytes)
+    }
+    //https://stackoverflow.com/questions/309424/read-convert-an-inputstream-to-a-string
+    val code = httpcon.getResponseCode
+    val isError = code >= 400 && code <= 500
+    val resp = using{
+      // using method from here: https://stackoverflow.com/a/5218279/243233
+      if (isError) httpcon.getErrorStream else httpcon.getInputStream
+    }{is =>
+      val writer = new StringWriter;
+      IOUtils.copy(is, writer, "UTF-8");
+      writer.toString;
+    }
+    httpcon.disconnect
+    if (isError) throw new Exception(s"Resp code $code. Error: ${resp.take(200)}") else resp        
+  }
+
+  def curlXML(jsonEncodedString:String) = jsonStringToXML(curl(jsonEncodedString))
+  
   def getSoftwareVersion:String = {
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       s"""{"method":"getnetworkinfo","params":[],"id":$id,"jsonrpc":"1.0"}"""
     )
     (xml \\ "subversion").text
   }
   def getConfirmations(txHash:String) = {
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       s"""{"method":"getrawtransaction","params":["$txHash", 1],"id":$id,"jsonrpc":"1.0"}"""
     )
     val txids = (xml \ "result" \ "txid")
@@ -43,8 +76,7 @@ class BitcoindAPI(rpcuser:String, rpcpassword:String, rpcHost:String) {
     }
   }
   def pushTx(hex:String) = {
-    CurlJsonData.curlXML(
-      rpcHost, 
+    curlXML(
       s"""{"method":"sendrawtransaction","params":["$hex"],"id":$id,"jsonrpc":"1.0"}"""
     ) 
     "Ok"
@@ -60,8 +92,7 @@ s"""
 }"""
       }.reduceLeft(_+","+_)+"]"
       val json2 = """{"rescan":false}"""
-      val xml = CurlJsonData.curlXML(
-        rpcHost, 
+      val xml = curlXML(
         s"""{"jsonrpc": "1.0", "id":$id, "method": "importmulti", "params": [$json1, $json2] }"""
       )    
       (xml \\ "result").map(_.text).toArray
@@ -69,21 +100,18 @@ s"""
   }
   def importAddress(address:String) = {
     val label = address
-    CurlJsonData.curl(
-      rpcHost, 
+    curl(
       s"""{"jsonrpc": "1.0", "id":$id, "method": "importaddress", "params": ["$address", "", false] }"""
     )    
     "Ok"
   }
   def testConnection = {
-    CurlJsonData.curl(
-      rpcHost, 
+    curl(
       s"""{"method":"getblockchaininfo","params":[],"id":$id,"jsonrpc":"1.0"}"""
     )
   }  
   def getTransaction(txHash:String) = {
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       s"""{"method":"getrawtransaction","params":["$txHash", 1],"id":$id,"jsonrpc":"1.0"}"""
     )
     Parser.parseTxXML((xml \ "result")(0))
@@ -91,8 +119,7 @@ s"""
 
   
   def getBlockSummary(blockHash:String):BlkSummary = {
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       s"""{"method":"getblock","params":["$blockHash"],"id":$id,"jsonrpc":"1.0"}"""
     )
     val txHashes =  xml \\ "tx" map (_.text)
@@ -103,30 +130,27 @@ s"""
   }
 
   def getBlock(blockHash:String):Blk = {
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       s"""{"method":"getblock","params":["$blockHash", 2],"id":$id,"jsonrpc":"1.0"}"""
-    )
-    val prevBlkHash =  (xml \\ "previousblockhash").text
-    val version =  (xml \\ "version").text.toLong
-    val merkleRoot =  (xml \\ "merkleroot").text
-    val nBits = (xml \\ "bits").text.decodeHex
-    val nonce = (xml \\ "nonce").text.toLong
-    val time = (xml \\ "time").text.toLong * 1000
-    val txs = (xml \\ "result" \\ "tx").map(Parser.parseTxXML)
+    ) \ "result"
+    val prevBlkHash =  (xml \ "previousblockhash").text
+    val version =  (xml \ "version").text.toLong
+    val merkleRoot =  (xml \ "merkleroot").text
+    val nBits = (xml \ "bits").text.decodeHex
+    val nonce = (xml \ "nonce").text.toLong
+    val time = (xml \ "time").text.toLong * 1000
+    val txs = (xml \ "tx").map(Parser.parseTxXML)
     Blk(blockHash, prevBlkHash, time, version, txs, merkleRoot, nBits, nonce)
   }
   
   def getBestBlockHash = {
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       s"""{"method":"getbestblockhash","params":[],"id":$id,"jsonrpc":"1.0"}"""
     )
     (xml \\ "result").text
   }
   def getAddresses = {
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       s"""{"method":"getaddressesbyaccount","params":[""],"id":$id,"jsonrpc":"1.0"}"""
     )
     
@@ -155,8 +179,7 @@ s"""
   "id":$id,
 "jsonrpc":"1.0"}"""
     
-    val xml = CurlJsonData.curlXML(
-      rpcHost, 
+    val xml = curlXML(
       qry
     )
     (xml \\ "result").text

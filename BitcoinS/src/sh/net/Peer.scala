@@ -2,6 +2,7 @@
 package sh.net
 
 import sh.btc.BitcoinUtil._
+import java.util.concurrent.atomic.AtomicInteger
 import sh.btc.BitcoinS._
 import sh.util.StringUtil._
 import sh.net.DataStructures._
@@ -30,9 +31,11 @@ object Peer {
 
   def props(peerGroup:ActorRef, relay:Boolean) = Props(classOf[Peer], peerGroup, relay)
   
+  val actCtr = new AtomicInteger(0)
   def connectTo(hostName:String, peerGroup: ActorRef, relay:Boolean) = {
-    val peer = system.actorOf(props(peerGroup, relay), name = s"peer_$hostName")
-    val remote = system.actorOf(P2PClient.props(new InetSocketAddress(hostName, port), peer), s"peer-client_$hostName")
+    val ctr = actCtr.getAndIncrement
+    val peer = system.actorOf(props(peerGroup, relay), name = s"peer_$hostName$ctr")
+    val remote = system.actorOf(P2PClient.props(new InetSocketAddress(hostName, port), peer), s"peer-client_$hostName$ctr")
     peer ! remote  // Send remote address to peer. It will store for internal use
     peer // return an actor ref to the peer
   }
@@ -40,8 +43,6 @@ object Peer {
 
 class Peer(peerGroup:ActorRef, relay:Boolean) extends Actor {
 
-  import Peer.debug
-  
   var optClientActor:Option[ActorRef] = None // reference to the actor that talks to remote peer
   
   var optRemoteAddr:Option[InetSocketAddress] = None // address of remote peer
@@ -62,15 +63,15 @@ class Peer(peerGroup:ActorRef, relay:Boolean) extends Actor {
       optRemoteAddr = Some(remote) 
       optLocalAddr = Some(local)
       sender ! VersionMsg(local, remote, relay) // send version message
- 
+      peerGroup ! ("connected", remote.getHostString)
     case "connection closed" => // remote connection closed
       println(s"Remote connection closed: $peer")
+      peerGroup ! "disconnected"
       context.stop(self)
-    
+      
     case "stop" => // someone sent this actor a shutdown signal 
       println(s"Peer received stop signal: $peer")
       optClientActor.map(_ ! "close")  // ask client to disconnect
-      //context.stop(self)
     
     case any => println(s"Peer got unknown message: [$any] from [$sender]")
   }
@@ -82,6 +83,7 @@ class Peer(peerGroup:ActorRef, relay:Boolean) extends Actor {
     val bytes = byteString.toArray
     command match {
       case `getDataCmd` => peerGroup ! (getDataCmd, new InvPayloadParser(bytes).inv)
+      case `rejectCmd` => peerGroup ! new RejectPayloadParser(bytes).rej
       case `invCmd` => peerGroup ! new InvPayloadParser(bytes).inv
       case `notFoundCmd` => peerGroup ! (notFoundCmd, new InvPayloadParser(bytes).inv)
       case `getAddrCmd` => sendAddr // if needed to parse payload: val addr = new AddrPayloadParser(bytes).addr // do something with addr 

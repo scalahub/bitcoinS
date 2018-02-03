@@ -2,6 +2,7 @@ package sh.net
 
 import sh.btc.DataStructures.{ Blk, Tx }
 import sh.net.DataStructures._
+import sh.net.Parsers.RejectMessage
 import sh.net.Payloads._
 import sh.net.NetUtil._
 import sh.util.StringUtil._
@@ -116,6 +117,12 @@ class PeerGroup(listener:EventListener) extends Actor {
         }
       }
 
+    case rej:RejectMessage => 
+      println(s"Reject: $rej")
+      /* from a peerActor (one of peerActor received a tx from its remote counterpart, and it has forwarded it to)
+         its peerGroup (this one) for further processing */
+      
+
     case tx:Tx => 
       /* from a peerActor (one of peerActor received a tx from its remote counterpart, and it has forwarded it to)
          its peerGroup (this one) for further processing */
@@ -178,14 +185,22 @@ class PeerGroup(listener:EventListener) extends Actor {
         peer ! new GetDataMsg(hash) // send only to first peer as of now
       }
     
+    case ("connected", hostName:String) =>
+      peers += (hostName -> (sender, getTimeMillis))
+
+    case "disconnected" =>
+      peers = peers.filter{
+        case (name, (ref, time)) if ref == sender => false
+        case _ => true
+      }
+
     case "getpeers" =>  // from Node (app made a getpeers req) 
       val now = getTimeMillis
       sender ! peers.map{case (hostName, (_, time)) => s"$hostName (${((now - time)/100)}) seconds"}.toArray
       
     case (m@("connect"|"connectAsync"), hostName:String, relay:Boolean) => // from Node (app made a connect req)
       val resp = usingFailure(peers.contains(hostName))(s"Already conntected to $hostName"){
-        val peer = Peer.connectTo(hostName, self, relay)
-        peers += (hostName -> (peer, getTimeMillis))
+        val peer = Peer.connectTo(hostName, self, relay)        
         // https://doc.akka.io/docs/akka/2.3.4/scala/actors.html#Lifecycle_Monitoring_aka_DeathWatch
         context.watch(peer) // new peerActor created, add to watched peers
         "ok"
@@ -195,14 +210,14 @@ class PeerGroup(listener:EventListener) extends Actor {
     case (m@("disconnect"|"disconnectAsync"), hostName:String) => // from Node (app made a disconnect req)
       val resp = usingFailure(!peers.contains(hostName))(s"Not conntected to $hostName"){
         peers.get(hostName).map{case (peer, time) => peer ! "stop"}
-        peers -= hostName
+        // peers -= hostName
         "ok"
       }
       if (m == "disconnect") sender ! resp
     
 
     case m@("stop"|"stopAsync") =>
-      println("Received disconnect signal")
+      println("Received stop signal")
       peers.foreach{case (hostName, (peer, time)) => peer ! "stop"}
       if (m == "stop") sender ! "Stopping peers"
       

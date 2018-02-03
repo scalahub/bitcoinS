@@ -43,6 +43,100 @@ object Parsers {
   class AddrPayloadParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
     val addr = AddrPayload(1 to getCompactInt map(_ => getNetAddrPayload(false)))
   }
+  
+  /*
+   * REJECT CODES: https://gist.github.com/gavinandresen/7079034
+   *
+Range	Category
+0x01-0x0f	Protocol syntax errors
+0x10-0x1f	Protocol semantic errors
+0x40-0x4f	Server policy rule
+rejection codes common to all message types
+
+Code	Description
+0x01	Message could not be decoded
+
+   */
+  case class RejectMessage(msg:String, code:Byte, reason:String, details:Option[String]) {
+    val category = code match {
+      case a if a >= 0x01 && a <= 0x0f => "Protocol syntax errors"
+      case a if a >= 0x10 && a <= 0x1f => "Protocol semantic errors"
+      case a if a >= 0x40 && a <= 0x4f => "Server policy rule"
+    }
+    val cause = code match {
+      case 0x01 => "Message could not be decoded"
+      case 0x11 => "Client is an obsolete, unsupported version"
+      case 0x12 => "Duplicate version message received"
+        
+        // below are tx reject
+      case 0x12 => "Duplicate version message received"
+      case 0x12 => "Duplicate version message received"
+      case 0x12 => "Duplicate version message received"
+    }
+  }
+/*
+reject version codes
+Codes generated during the intial connection process in response to a "version" message:
+
+Code	Description
+0x11	Client is an obsolete, unsupported version
+0x12	Duplicate version message received
+
+reject tx payload, codes
+Transaction rejection messages extend the basic message with the transaction id:
+
+Field Size	Description	Data type	Comments
+32              txid            char[32]	transaction that is rejected
+The following codes are used:
+
+Code	description
+0x10	Transaction is invalid for some reason (invalid signature, output value greater than input, etc.)
+0x40	Not mined/relayed because it is "non-standard" (type or version unknown by the server)
+0x41	One or more output amounts are below the 'dust' threshold
+0x42	Transaction does not have enough fee/priority to be relayed or mined
+
+payload, reject block
+Block rejection messages extend the basic message with the block header hash:
+
+Field Size	Description	Data type	Comments
+32              hash            char[32]	block (hash of block header) that is rejected
+
+Rejection codes:
+code	description
+0x10	Block is invalid for some reason (invalid proof-of-work, invalid signature, etc)
+0x11	Block's version is no longer supported
+0x43	Inconsistent with a compiled-in checkpoint
+
+Note: blocks that are not part of the server's idea of the current best chain, but are otherwise valid, should not trigger "reject" messages.
+
+Implementation notes
+Sending "reject" messages to old nodes does no harm-- unknown commands are ignored for extensibility (in the reference implementation, at least-- other implementations should do the same). So there is no need to bump the protocol version.
+
+Implementors should consider what happens if an attacker either sends them "reject" messages for valid transactions/blocks or sends them random "reject" messages, and should beware of possible denial-of-service attacks (e.g. blindly notifying the user of every "reject" message received would definitely be the wrong thing to do, and even blindly writing every "reject" message to a debug.log could open up a fill-up-disk DoS attack).
+
+ */  
+  class RejectPayloadParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
+    val msg = getString(getCompactInt) // response-to-msg	var_str	Message that triggered the reject
+    val code = getNextBytes(1).head // reject-code	uint8_t
+    val debugMsg = getString(getCompactInt) // reason	var_str	Human-readable message for debugging
+    lazy val remaining = if (numBytesRemaining > 0) getString(numBytesRemaining) else "none"
+    val rej = RejectMessage(msg, code, debugMsg, ???)
+    
+    println("[Reject] "+bytes.encodeHex)
+    
+    
+    /*
+reject
+The reject message is sent when messages are rejected.
+Payload:
+Field Size	Description	Data type	Comments
+1+	message	var_str	type of message rejected
+1	ccode	char	code relating to rejected message
+1+	reason	var_str	text version of reason for rejection
+0+	data	char	Optional extra data provided by some errors. Currently, all errors which provide this field fill it with the TXID or block header hash of the object being rejected, so the field is 32 bytes.
+     */
+    
+  }
 
   class VersionPayloadParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
     val version = {

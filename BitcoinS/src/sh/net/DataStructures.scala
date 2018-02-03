@@ -68,6 +68,7 @@ object DataStructures {
   val pongCmd = "pong"
   val addrCmd = "addr"
   val versionCmd = "version"
+  val rejectCmd = "reject"
   val alertCmd = "alert" // not processed as of now
   val getDataCmd = "getdata" 
   val notFoundCmd = "notfound" 
