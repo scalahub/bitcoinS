@@ -29,7 +29,7 @@ object TestUAHF1 extends App {
   val out2 = new TxOut("mgRoeWs2CeCEuqQmNfhJjnpX8YvtPACmCX", 1000000000) // faucet address
   val out3 = new TxOut("mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf",  300000000) // this address
   val out4 = new TxOut("mgysA6VHQGAiojCVZjv71rKXAKkuBhqHKf",  300000000) // this address
-  val unsigned = BitcoinS.createNonSegWitTxRaw(Seq(in1, in2), Seq(out1, out2, out3, out4))
+  val unsigned = BitcoinS.createTxRaw(Seq(in1, in2), Seq(out1, out2, out3, out4))
   val values = Seq((0, BigInt(1300000000)), (1, BigInt(650000000)))
   val signed = prvKey.signTx(unsigned, values)
   assert(signed.encodeHex == UAHF_TestVectors1.signedHex)
@@ -85,7 +85,7 @@ object TestUAHF2 {
   val in2 = TxIn("e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72", 2)
   val in3 = TxIn("e3a16781936ffdc063444d1ecc209dfc786f8e37a4be5fb0ba76db0da6f3ea72", 3)
   val out1 = new TxOut("mgRoeWs2CeCEuqQmNfhJjnpX8YvtPACmCX",  948000000) // faucet address
-  val unsigned = BitcoinS.createNonSegWitTxRaw(Seq(in1, in2, in3), Seq(out1))
+  val unsigned = BitcoinS.createTxRaw(Seq(in1, in2, in3), Seq(out1))
   val values = Seq(
     (0, BigInt(349000000)), 
     (1, BigInt(300000000)), 

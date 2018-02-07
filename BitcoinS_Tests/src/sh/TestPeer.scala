@@ -28,7 +28,7 @@ object TestPeer extends App {
   BitcoinSNode.addOnBlkHandler("myBlkHandler", blk => println(s"[blk] $blk"))
   
   BitcoinSNode.connectTo("localhost", false) // connect to given node (false implies disable tx relay)
-  BitcoinSNode.start(false) // connect to seed nodes (false implies disable tx relay)
+  BitcoinSNode.connectToAllSeeds(false) // connect to seed nodes (false implies disable tx relay)
   
   Thread.sleep(10000) // wait for connnect 10 secs
   
@@ -53,7 +53,7 @@ object TestPeer extends App {
 object TestUAHFPeer extends App {
   isMainNet = false // testnet has some issues.. to resolve.
   Peer.debug = true
-  BitcoinCashSNode.start(true)
+  BitcoinCashSNode.connectToAllSeeds(true)
   Thread.sleep(10000)
   val hex = "01000000023dea0ef9fb5e44740fed3f796a0a8560f0ef23cde48509da42d1c1e21093dfaa000000008a4730440220255cb99927119b6fa35529cad83ae37346f99aedd46be63ac440ddd74599317d022075b71dfcc3ecb33e66a654be471f1e208cfe991d75ab6f1669861081bb3ef7c14141046d163a922667b1e312fd9ef1623fa717ff1e05711c2b704cdc545128ea606b1b1d2234787277f170782a0e6b129acf3d27f222f39bc1b362f661f7a6de2f61d2ffffffff0bb44012b22318fe416ce34ff4cb7e9ba669a5fb2b538022f98c2d759e111672020000008b483045022100c1433ac28e39a9836688a78d04add2e081417513c43579bc664a4502070b34db02200ca8133867ecc972d61391d024a1b6afc7c29be8e5da9639b70d2ba94c57efd54141046d163a922667b1e312fd9ef1623fa717ff1e05711c2b704cdc545128ea606b1b1d2234787277f170782a0e6b129acf3d27f222f39bc1b362f661f7a6de2f61d2ffffffff02b8a2754d000000001976a91409fed3e08e624b23dbbacc77f7b2a39998351a6888ac20a10700000000001976a914fc0a8abe52055d55223d9e5d387f87ca7c320c9c88ac00000000"
   val tx = new TxParser(hex.decodeHex).getTx

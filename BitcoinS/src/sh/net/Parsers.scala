@@ -67,11 +67,7 @@ Code	Description
       case 0x01 => "Message could not be decoded"
       case 0x11 => "Client is an obsolete, unsupported version"
       case 0x12 => "Duplicate version message received"
-        
-        // below are tx reject
-      case 0x12 => "Duplicate version message received"
-      case 0x12 => "Duplicate version message received"
-      case 0x12 => "Duplicate version message received"
+      case _ => "Unknown"
     }
   }
 /*
