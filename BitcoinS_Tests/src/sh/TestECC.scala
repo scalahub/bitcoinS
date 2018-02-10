@@ -9,8 +9,9 @@ import sh.util.BigIntUtil._
 
 object TestECC extends App {
   // generate random keys
-  println("0*G = "+(0 * G))
+  println("0*G....")
   println("Testing that n * G = point at infinity")
+  assertException(PointAtInfinityException.getClass)(0 * G)
   assertException(PointAtInfinityException.getClass)(n * G)
   println("Testing test vectors1 (prvKey, pubKey)")
   testTvs(TestVectorsECC1.s, false)

@@ -5,6 +5,7 @@ import akka.util.ByteString
 import sh.btc.BitcoinS._
 import sh.util.StringUtil._
 import sh.net.DataStructures._
+import sh.net.Parsers.RejectPayloadParser
 import sh.util.BytesUtil._
 import sh.ecc.Util._
 import sh.util.HashUtil._
@@ -57,7 +58,7 @@ Code	Description
 0x01	Message could not be decoded
 
    */
-  case class RejectMessage(msg:String, code:Byte, reason:String, details:Option[String]) {
+  case class RejectMessage(msg:String, code:Byte, reason:String, details:Seq[Byte]) {
     val category = code match {
       case a if a >= 0x01 && a <= 0x0f => "Protocol syntax errors"
       case a if a >= 0x10 && a <= 0x1f => "Protocol semantic errors"
@@ -65,10 +66,17 @@ Code	Description
     }
     val cause = code match {
       case 0x01 => "Message could not be decoded"
+
+      case 0x10 => "Transaction is invalid for some reason (invalid signature, output value greater than input, etc.)"        
+      case 0x40	=> "Not mined/relayed because it is 'non-standard' (type or version unknown by the server)"
+      case 0x41	=> "One or more output amounts are below the 'dust' threshold"
+      case 0x42	=> "Transaction does not have enough fee/priority to be relayed or mined"        
+
       case 0x11 => "Client is an obsolete, unsupported version"
       case 0x12 => "Duplicate version message received"
       case _ => "Unknown"
     }
+    override def toString = s"Reject:$msg:$code:$reason:${details.toArray.reverse.encodeHex}"
   }
 /*
 reject version codes
@@ -115,14 +123,11 @@ Implementors should consider what happens if an attacker either sends them "reje
     val msg = getString(getCompactInt) // response-to-msg	var_str	Message that triggered the reject
     val code = getNextBytes(1).head // reject-code	uint8_t
     val debugMsg = getString(getCompactInt) // reason	var_str	Human-readable message for debugging
-    lazy val remaining = if (numBytesRemaining > 0) getString(numBytesRemaining) else "none"
-    val rej = RejectMessage(msg, code, debugMsg, ???)
-    
-    println("[Reject] "+bytes.encodeHex)
+    lazy val remaining = if (numBytesRemaining > 0) getNextBytes(numBytesRemaining) else Nil
+    val rej = RejectMessage(msg, code, debugMsg, remaining)
     
     
     /*
-reject
 The reject message is sent when messages are rejected.
 Payload:
 Field Size	Description	Data type	Comments
@@ -152,4 +157,10 @@ Field Size	Description	Data type	Comments
   class PingPayloadParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
     val ping = PingPayload(getNext8UInt)
   }
+}
+
+object Foo extends App{
+  val s = "027478421d72617465206c696d697465642066726565207472616e73616374696f6e4436ef629043567e77275587b78f40c9190f2361ad522495f2542ace8d1fff2e"
+  val r = new RejectPayloadParser(s.decodeHex).rej
+  println(r)
 }

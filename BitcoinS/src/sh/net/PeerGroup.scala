@@ -88,7 +88,7 @@ class PeerGroup(listener:EventListener) extends Actor {
     else 
       try Success(f) catch { case t:Throwable => Failure(t) }
 
-  def usingConnectedAsync[T](f: => T) = usingFailure(peers.isEmpty)("Not connected")(f) match {
+  def usingConnectedAsync[T](f: => T) = usingFailure(peers.size == 0)("Not connected")(f) match {
     case f@Failure(_) => sender ! f // error, send immediately
     case Success(_) => // do nothing, its an async call. 
   }
@@ -160,15 +160,10 @@ class PeerGroup(listener:EventListener) extends Actor {
       if (invToSend.nonEmpty) sender ! GetDataMsg(invToSend) // send the getdata command for the data we need
       
     case Terminated(ref) => // DeathWatch 
-      peers = peers.filterNot{
-        case (host, `ref`) => 
-          println(s"[watcher] Peer terminated $host")
-          false
+      peers = peers.filter{
+        case (host, `ref`) => false
         case _ => true
       }
-      
-      
-      
       
     // Below messages are received from a Node object
     case ("pushtx", tx:Tx) =>  // from Node (app has send us a "push" tx request (via Node) and we need to send it to others)
@@ -184,13 +179,14 @@ class PeerGroup(listener:EventListener) extends Actor {
         val (hostName, (peer, time)) = peers.head 
         peer ! new GetDataMsg(hash) // send only to first peer as of now
       }
-    
+    //connected
     case ("connected", hostName:String) =>
       peers += (hostName -> (sender, getTimeMillis))
 
     case "disconnected" =>
       peers = peers.filter{
-        case (name, (ref, time)) if ref == sender => false
+        case (name, (ref, time)) if ref == sender => 
+          false
         case _ => true
       }
 
@@ -210,7 +206,7 @@ class PeerGroup(listener:EventListener) extends Actor {
     case (m@("disconnect"|"disconnectAsync"), hostName:String) => // from Node (app made a disconnect req)
       val resp = usingFailure(!peers.contains(hostName))(s"Not conntected to $hostName"){
         peers.get(hostName).map{case (peer, time) => peer ! "stop"}
-        // peers -= hostName
+        // peers -= hostName // handled in case Terminated(...) =>
         "ok"
       }
       if (m == "disconnect") sender ! resp

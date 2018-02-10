@@ -1,5 +1,6 @@
 package sh
 
+import sh.net.Parsers.RejectPayloadParser
 import sh.net._
 import sh.btc.BitcoinUtil._
 import sh.btc._
@@ -9,6 +10,7 @@ import sh.util.StringUtil._
 import sh.net.DataStructures._
 import sh.net.NetUtil._
 import sh.util.BytesUtil._
+import sh.util.StringUtil._
 import sh.ecc.Util._
 import sh.util.HashUtil._
 
@@ -20,7 +22,7 @@ object TestPeer extends App {
         vSeeds.emplace_back("seed.bitcoinstats.com", true); // Christian Decker, supports x1 - xf
         vSeeds.emplace_back("seed.bitcoin.jonasschnelli.ch", true); // Jonas Schnelli, only supports x1, x5, x9, and xd
         vSeeds.emplace_back("seed.btc.petertodd.org", true); // Peter Todd, only supports x1, x5, x9, and xd    */
-  // isMainNet = false // set to true for main net (default)
+  isMainNet = false // set to true for main net (default)
   Peer.debug = true // prints a lot of info
    
   // Below shows how to add handlers for events (block or tx received)
@@ -54,9 +56,28 @@ object TestUAHFPeer extends App {
   isMainNet = false // testnet has some issues.. to resolve.
   Peer.debug = true
   BitcoinCashSNode.connectToAllSeeds(true)
+  
   Thread.sleep(10000)
   val hex = "01000000023dea0ef9fb5e44740fed3f796a0a8560f0ef23cde48509da42d1c1e21093dfaa000000008a4730440220255cb99927119b6fa35529cad83ae37346f99aedd46be63ac440ddd74599317d022075b71dfcc3ecb33e66a654be471f1e208cfe991d75ab6f1669861081bb3ef7c14141046d163a922667b1e312fd9ef1623fa717ff1e05711c2b704cdc545128ea606b1b1d2234787277f170782a0e6b129acf3d27f222f39bc1b362f661f7a6de2f61d2ffffffff0bb44012b22318fe416ce34ff4cb7e9ba669a5fb2b538022f98c2d759e111672020000008b483045022100c1433ac28e39a9836688a78d04add2e081417513c43579bc664a4502070b34db02200ca8133867ecc972d61391d024a1b6afc7c29be8e5da9639b70d2ba94c57efd54141046d163a922667b1e312fd9ef1623fa717ff1e05711c2b704cdc545128ea606b1b1d2234787277f170782a0e6b129acf3d27f222f39bc1b362f661f7a6de2f61d2ffffffff02b8a2754d000000001976a91409fed3e08e624b23dbbacc77f7b2a39998351a6888ac20a10700000000001976a914fc0a8abe52055d55223d9e5d387f87ca7c320c9c88ac00000000"
   val tx = new TxParser(hex.decodeHex).getTx
   BitcoinCashSNode.pushTx(tx) // send tx to PeerGroup to broadcast */
   println("Tx pushed")
 }
+
+object RejectParserTest extends App{
+  val bytes = "027478421d72617465206c696d697465642066726565207472616e73616374696f6e4436ef629043567e77275587b78f40c9190f2361ad522495f2542ace8d1fff2e".decodeHex
+  val rej = new RejectPayloadParser(bytes).rej
+  println(rej)
+}
+
+//  REJECT message example:
+//     "027478421d72617465206c696d697465642066726565207472616e73616374696f6e4436ef629043567e77275587b78f40c9190f2361ad522495f2542ace8d1fff2e"
+//     
+//     Reject:tx:66:rate limited free transaction:2eff1f8dce2a54f2952452ad61230f19c9408fb7875527777e56439062ef3644
+//
+//     02
+//     7478  tx
+//     42    (code 66)
+//     1d72617465206c696d697465642066726565207472616e73616374696f6e = rate limited free transaction
+//     4436ef629043567e77275587b78f40c9190f2361ad522495f2542ace8d1fff2e = 2eff1f8dce2a54f2952452ad61230f19c9408fb7875527777e56439062ef3644
+//     
