@@ -44,6 +44,9 @@ object NetUtil {
   case class UInt32(uint32:Long) extends UIntX(uint32, 4) // Long
   case class UInt64(uint64:BigInt) extends UIntX(uint64, 8) // BigInt
   
+  // needed for Bloom filter
+  case class UInt8(uint8:Int) extends UIntX(uint8, 1) // Int
+  
   case class IntBool1(boolean:Boolean) extends UIntX(if (boolean) 1 else 0, 1)
 
   case class Int32(int32:Int) extends UIntX(int32, 4) // Int
@@ -72,6 +75,7 @@ object NetUtil {
   implicit def longToInt64(long:Long) = Int64(long)
   implicit def boolToIntBool1(boolean:Boolean) = IntBool1(boolean)
   implicit def intToIntBool1(int:Int) = if (int == 0) false else true
+  implicit def intToUInt8(int:Int) = UInt8(int)
   
   private [net] implicit def intToVarInt(int:Int) = VarInt(BigInt(int))
   private [net] implicit def varIntToInt(varInt:VarInt) = varInt.bigInt.toInt

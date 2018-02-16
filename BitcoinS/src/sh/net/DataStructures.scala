@@ -74,6 +74,9 @@ object DataStructures {
   val notFoundCmd = "notfound" 
   val txCmd = "tx" 
   val blockCmd = "block" 
+  val filterLoad = "filterload" 
+  val filterAdd = "filteradd" 
+  val filterClear = "filterclear" 
   
   // below used for sending to others
   object VerAckMsg extends P2PMsg(verAckCmd)
@@ -83,6 +86,12 @@ object DataStructures {
   case class GetDataMsg(invVectors:Seq[InvVector]) extends P2PMsg(getDataCmd, new InvPayload(invVectors)) {
     def this(blockHash:String) = this(Seq(InvVector(MSG_BLOCK, blockHash)))
   }
+  
+  case class FilterLoadMsg(filter:BloomFilter) extends P2PMsg(filterLoad, FilterLoadPayload(filter))
+
+  case class FilterAddMsg(data:Array[Byte]) extends P2PMsg(filterAdd, FilterAddPayload(data))
+
+  object FilterClearMsg extends P2PMsg(filterClear)
   
   case class PushTxInvMsg(txRpcHash:String) extends P2PMsg(invCmd, new InvPayload(InvVector(MSG_TX, txRpcHash))) 
   

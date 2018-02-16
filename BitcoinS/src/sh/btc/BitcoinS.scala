@@ -35,7 +35,4 @@ object BitcoinS {
       case (prevTx, ((key, amt), i)) => key.signTx(prevTx, i, amt)
     }
   
-  /* // below is another wrapper, commented out because unused (and should never be needed)
-  def createSegWitTxRaw(insWits:Seq[(In, Wit)], outs:Seq[Out]) = 
-    createSegWitTxRawAdvanced(defaultVersion, insWits:Seq[(In, Wit)], outs:Seq[Out], defaultLockTime) */
 }
