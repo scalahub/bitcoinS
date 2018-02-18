@@ -167,9 +167,9 @@ object Util {
   
   val recoveryEncoding = Array[Byte](0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22)
   
-  val magicBytes =  "Bitcoin Signed Message:\n".getBytes
+  val signMagicBytes =  "Bitcoin Signed Message:\n".getBytes
 
   def getMessageToSignBitcoinD(message:String) = 
-    Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
+    Seq(signMagicBytes.size.toByte) ++ signMagicBytes ++ Seq(message.size.toByte) ++ message.getBytes
 
 }

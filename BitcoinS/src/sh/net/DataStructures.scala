@@ -16,8 +16,6 @@ import Payloads._
 object DataStructures {
 
   val ipv4to6prefix = "00000000000000000000FFFF".decodeHex
-  val ourVersion = 70003 
-  val defaultUserAgent = "/BitcoinS:0.1/" 
   val nonce = new AtomicLong(0)
 
   class Payload(val bytes:Seq[Byte]) {
@@ -32,10 +30,15 @@ object DataStructures {
      F9 BE B4 D9                                                                   - Main network magic bytes
      76 65 72 73 69 6F 6E 00 00 00 00 00                                           - "version" command
      64 00 00 00                                                                   - Payload is 100 bytes long
-     3B 64 8D 5A                                                                   - payload checksum */
+     3B 64 8D 5A                                                                   - payload checksum 
+     
+     e3:e1:f3:e8
+   */
+    
+  
   case class P2PHeader(command:String, checkSum:Array[Byte], payloadLen:Int) {
     val checkSumHex:String = checkSum.encodeHex
-    val bytes = getMagicBytes ++ getFixedStringBytes(command, 12) ++ UInt32(payloadLen).bytes ++ checkSum
+    val bytes = magicBytes ++ getFixedStringBytes(command, 12) ++ UInt32(payloadLen).bytes ++ checkSum
   }
   
   class P2PMsg(command:String, payload:Payload){
@@ -75,6 +78,7 @@ object DataStructures {
   val txCmd = "tx" 
   val blockCmd = "block" 
   val filterLoad = "filterload" 
+  val memPool = "mempool" 
   val filterAdd = "filteradd" 
   val filterClear = "filterclear" 
   
@@ -88,6 +92,8 @@ object DataStructures {
   }
   
   case class FilterLoadMsg(filter:BloomFilter) extends P2PMsg(filterLoad, FilterLoadPayload(filter))
+  
+  object MemPoolMsg extends P2PMsg(memPool)
 
   case class FilterAddMsg(data:Array[Byte]) extends P2PMsg(filterAdd, FilterAddPayload(data))
 

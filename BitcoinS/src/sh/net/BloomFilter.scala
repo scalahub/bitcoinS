@@ -2,10 +2,12 @@
 package sh.net
 
 import sh.util.StringUtil._
-import sh.util.BigIntUtil._
+import sh.util.Base58Check
 import java.util.concurrent.atomic.AtomicInteger
 import scala.util.hashing.MurmurHash3
+import sh.btc._
 import sh.net.NetUtil._
+import sh.util.BigIntUtil._
 
 object BloomFilter{
   val BYTES_MAX = 36000
@@ -31,7 +33,7 @@ object BloomFilter{
     new BloomFilter(nTweak, nHashFuncs, 0, nFilterBytes)
   }
 }
-class BloomFilter private[net] (val nTweak:UInt32, val nHashFuncs:UInt32, val nFlags:UInt8, val nFilterBytes:Int) {
+class BloomFilter private[sh] (val nTweak:UInt32, val nHashFuncs:UInt32, val nFlags:UInt8, val nFilterBytes:Int) {
   /* https://en.wikipedia.org/wiki/Bloom_filter
 An empty Bloom filter is a bit array of m bits, all set to 0. 
 There must also be k different hash functions defined, 
@@ -72,33 +74,26 @@ Set the bits at all these positions to 1.
     case _ => '0'
   }.mkString
   
-  def bytes = filterBitString.grouped(8).map{byteString =>
-    BigInt(byteString, 2).toBytes 
-  }.flatten.toArray
-}
+  def addAddress(address:String) = {
+    if (BitcoinS.isValidAddress(address)){
+      val decoded = Base58Check.decode(address)             
+      val (prefix, pubKeyHashOrData) = (decoded(0), decoded.drop(1))  // first byte is network version and address type
+      add(pubKeyHashOrData)
+      add(BitcoinUtil.getScriptPubKeyFromAddress(address).toArray)
+    } else throw new Exception("Invalid address")
+  }
 
-object TestFilter extends App {
-  /* 
-   * https://bitcoin.org/en/developer-examples#creating-a-bloom-filter
-   */
-  val data = "019f5b01d4195ecbc9398fbf3c3b1fa9bb3183301d7a1fb3bd174fcfa40a2b65".decodeHex
-  val data1 = "19f5b01d4195ecbc9398fbf3c3b1fa9bb3183301d7a1fb3bd174fcfa40a2b65".decodeHex
-  val f = new BloomFilter(0, 11, 0, 2)
-  f.add(data)
-  println("Filter: "+f.filterBitString)
-  //Filter: 1010110111110000
-  //        1010110111110000
-  val f1 = BloomFilter.getFilter(100000, 0.01)
-  println("Actual rate: "+f1.getActualFalsePositiveRate(100000))
+  def addPubKey(pubKey:PubKey) = {
+    add(pubKey.bytes)
+    addAddress(pubKey.address)
+  }
+
+  def addTx(txid:String) = {
+    val char32:Char32 = txid
+    add(char32.bytes.toArray)
+  }
   
-  val f2 = BloomFilter.getFilter(1, 0.0001, 0)
-  f1.add(data)
-  f2.add(data)
-  println("Filter: "+f2.filterBitString)
-  println("=> "+f1.exists(data))
-  println("=> "+f1.exists(data1))
-  println("=> "+BigInt("111111111", 2).toBytes.size)
+  def bytes = filterBitString.reverse.grouped(8).map{byteString =>
+    BigInt(byteString, 2).toBytes 
+  }.flatten.toArray.reverse
 }
-
-
-

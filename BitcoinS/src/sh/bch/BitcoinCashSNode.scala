@@ -1,12 +1,19 @@
 
 package sh.bch
 
+import sh.btc.BitcoinS
 import sh.btc.BitcoinS._
+import sh.net.NetUtil
 import sh.net.Node
+import sh.util.StringUtil._
+
 
 object BitcoinCashSNode extends Node {
   /* https://gist.github.com/scalahub/09dedd9a30ee6b42a61adf481f5830eb#file-bitcoincash-seed-servers-L53 */
   lazy val id = "BitcoinCash"
+  BitcoinS.defaultUserAgent = "/BitcoinCashS 1.0/"
+  BitcoinS.ourServiceBit = 0x20
+  NetUtil.magicBytes = "e3e1f3e8".decodeHex
   val seeds = if (isMainNet) Seq(
     "abc.vom-stausee.de",
     "abc1.hsmiths.com", 

@@ -16,7 +16,11 @@ object Payloads {
   case class PingPayload(nonce:UInt64) extends Payload(nonce.bytes)
   case class PongPayload(ping:PingPayload) extends Payload(ping.nonce.bytes)
   
-  case class FilterLoadPayload(f:BloomFilter) extends Payload(f.bytes++f.nHashFuncs.bytes++f.nTweak.bytes++f.nFlags.bytes) 
+  case class FilterLoadPayload(f:BloomFilter) extends {
+    val b = getCompactIntBytes(f.bytes.size)++f.bytes++f.nHashFuncs.bytes++f.nTweak.bytes++f.nFlags.bytes
+  } with Payload(b) {
+    println ("LOAD: "+b.toArray.encodeHex)
+  }
   
   case class FilterAddPayload(data:Array[Byte]) extends Payload(data) {
     if (data.size > 520) throw new Exception(s"Data too large (${data.size} bytes). Max 520 bytes permitted")
@@ -45,7 +49,7 @@ object Payloads {
     nonce.bytes ++ getVarStringBytes(userAgent) ++ startHeight.bytes ++ relay.bytes
   ) {
     def this(local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean) = this(
-      ourVersion, BigInt(0), getTimeSec, 
+      ourVersion, BigInt(ourServiceBit), getTimeSec, 
       new NetAddrPayload(local.getAddress.getAddress, local.getPort, true),
       new NetAddrPayload(remote.getAddress.getAddress, remote.getPort, true),
       BigInt(nonce.getAndIncrement), defaultUserAgent, 1, relay

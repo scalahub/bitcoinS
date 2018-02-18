@@ -21,7 +21,7 @@ object Parsers {
   }
   
   class HeaderParser(bytes:ByteString) extends AbstractNetParser(bytes.toArray) {
-    val header = if (bytes.size >= 24 && getNextBytes(4).toArray.encodeHex == getMagicBytes.encodeHex) { // valid header start
+    val header = if (bytes.size >= 24 && getNextBytes(4).toArray.encodeHex == magicBytes.encodeHex) { // valid header start
       val command = getString(12)
       val payloadSize = getNext4UInt.toInt
       val checkSum = getNextBytes(4).toArray
@@ -125,6 +125,7 @@ Implementors should consider what happens if an attacker either sends them "reje
     val debugMsg = getString(getCompactInt) // reason	var_str	Human-readable message for debugging
     lazy val remaining = if (numBytesRemaining > 0) getNextBytes(numBytesRemaining) else Nil
     val rej = RejectMessage(msg, code, debugMsg, remaining)
+    if (Peer.debug) println("Rej: "+bytes.encodeHex)
     
     
     /*

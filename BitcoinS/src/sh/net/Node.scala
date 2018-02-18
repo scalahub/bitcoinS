@@ -57,6 +57,9 @@ trait Node extends EventListener {
   @deprecated("Use method ending in Async", "15 Jan 2018")
   def disconnectFrom(hostName:String):String = await[String](peerGroup ? ("disconnect", hostName))
   
+  @deprecated("Use method ending in Async", "15 Jan 2018")
+  def addFilter(f:BloomFilter):Boolean = await[Boolean](peerGroup ? f)
+    
 
   // Use below methods only (they make async calls to PeerGroup)
 

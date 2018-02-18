@@ -8,6 +8,11 @@ object BitcoinS {
 
   var isMainNet = true // set to false for testnet
   
+  var defaultUserAgent = "/BitcoinS:0.1/" 
+
+  var ourVersion = 70003 
+  var ourServiceBit = 0
+  
   def isP2SH_Address(address:String) = {
     getKnownScriptPubKey(getScriptPubKeyFromAddress(address)).map{s =>
       s == P2SH

@@ -122,7 +122,26 @@ class PeerGroup(listener:EventListener) extends Actor {
       /* from a peerActor (one of peerActor received a tx from its remote counterpart, and it has forwarded it to)
          its peerGroup (this one) for further processing */
       
-
+    case ("filteradd", data:Array[Byte]) => 
+      usingConnectedAsync{
+        sender ! Success(true)
+        peers.values.foreach{case (peer, time) => peer ! FilterAddMsg(data)} // send to all
+      }
+    case "filterclear" => 
+      usingConnectedAsync{
+        sender ! Success(true)
+        peers.values.foreach{case (peer, time) => peer ! FilterClearMsg} // send to all
+      }
+    case f:BloomFilter =>
+      usingConnectedAsync{
+        sender ! Success(true)
+        peers.values.foreach{
+          case (peer, time) => 
+            peer ! FilterLoadMsg(f)
+            peer ! MemPoolMsg
+        } // send to all
+      }
+      
     case tx:Tx => 
       /* from a peerActor (one of peerActor received a tx from its remote counterpart, and it has forwarded it to)
          its peerGroup (this one) for further processing */
