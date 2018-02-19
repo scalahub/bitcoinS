@@ -3,6 +3,7 @@ package sh.btc
 
 import BitcoinUtil._
 import sh.btc.DataStructures._
+import sh.util.StringUtil._
 
 object BitcoinS {
 
@@ -12,6 +13,21 @@ object BitcoinS {
 
   var ourVersion = 70003 
   var ourServiceBit = 0
+
+  var MagicMainNet = "F9BEB4D9".decodeHex
+  var MagicTestNet3 = "0B110907".decodeHex
+    
+  def getMagicNetBytes = if (isMainNet) MagicMainNet else MagicTestNet3 // we are not handling testnet and namecoin
+
+  /*  Network   Magic value	Sent over wire as
+      main      0xD9B4BEF9	F9 BE B4 D9
+      testnet   0xDAB5BFFA	FA BF B5 DA 
+      testnet3	0x0709110B	0B 11 09 07
+      namecoin	0xFEB4BEF9	F9 BE B4 FE   
+      
+      bitcoinABC  e3:e1:f3:e8
+      
+   */ 
   
   def isP2SH_Address(address:String) = {
     getKnownScriptPubKey(getScriptPubKeyFromAddress(address)).map{s =>

@@ -1,6 +1,5 @@
 package sh
 
-import sh.net.Parsers.RejectPayloadParser
 import sh.net._
 import sh.btc.BitcoinUtil._
 import sh.btc._
@@ -22,7 +21,7 @@ object TestPeer extends App {
         vSeeds.emplace_back("seed.bitcoinstats.com", true); // Christian Decker, supports x1 - xf
         vSeeds.emplace_back("seed.bitcoin.jonasschnelli.ch", true); // Jonas Schnelli, only supports x1, x5, x9, and xd
         vSeeds.emplace_back("seed.btc.petertodd.org", true); // Peter Todd, only supports x1, x5, x9, and xd    */
-  isMainNet = false // set to true for main net (default)
+  //isMainNet = false // set to true for main net (default)
   Peer.debug = true // prints a lot of info
    
   // Below shows how to add handlers for events (block or tx received)
@@ -30,7 +29,7 @@ object TestPeer extends App {
   BitcoinSNode.addOnBlkHandler("myBlkHandler", blk => println(s"[blk] $blk"))
   
   BitcoinSNode.connectTo("localhost", false) // connect to given node (false implies disable tx relay)
-  BitcoinSNode.connectToAllSeeds(false) // connect to seed nodes (false implies disable tx relay)
+  BitcoinSNode.connectToAllSeeds(true) // connect to seed nodes (false implies disable tx relay)
   
   Thread.sleep(10000) // wait for connnect 10 secs
   
@@ -50,11 +49,19 @@ object TestPeer extends App {
     (f, System.currentTimeMillis - st)
   }
 }
+
 object TestUAHFPeer extends App {
-  isMainNet = true
+  isMainNet = false
   Peer.debug = true
   BitcoinCashSNode.connectToAllSeeds(true)  
-  BitcoinCashSNode.connectTo("localhost", true)
+  //BitcoinCashSNode.connectTo("localhost", true) // for local or any specific node
+}
+object TestABCPeer {
+  def main(a:Array[String]):Unit = if (a.size == 1) {
+    isMainNet = true
+    Peer.debug = true
+    BitcoinCashSNode.connectTo(a(0), true)
+  } else println("Usage java -cp test.jar sh.TestABCPeer <host>")
 }
 
 

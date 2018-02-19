@@ -3,7 +3,6 @@ package sh.bch
 
 import sh.btc.BitcoinS
 import sh.btc.BitcoinS._
-import sh.net.NetUtil
 import sh.net.Node
 import sh.util.StringUtil._
 
@@ -13,7 +12,9 @@ object BitcoinCashSNode extends Node {
   lazy val id = "BitcoinCash"
   BitcoinS.defaultUserAgent = "/BitcoinCashS 1.0/"
   BitcoinS.ourServiceBit = 0x20
-  NetUtil.magicBytes = "e3e1f3e8".decodeHex
+  BitcoinS.MagicMainNet = "e3e1f3e8".decodeHex // found via wireshark
+  BitcoinS.MagicTestNet3 = "0b110907".decodeHex // found via https://github.com/ayeowch/bitnodes/blob/e298741dec9809f55585a83c64600f06edc9d233/start.sh#L31
+  
   val seeds = if (isMainNet) Seq(
     "abc.vom-stausee.de",
     "abc1.hsmiths.com", 

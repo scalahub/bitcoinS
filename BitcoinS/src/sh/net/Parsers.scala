@@ -21,7 +21,7 @@ object Parsers {
   }
   
   class HeaderParser(bytes:ByteString) extends AbstractNetParser(bytes.toArray) {
-    val header = if (bytes.size >= 24 && getNextBytes(4).toArray.encodeHex == magicBytes.encodeHex) { // valid header start
+    val header = if (bytes.size >= 24 && (getNextBytes(4) zip getMagicNetBytes).forall{case (a,b)=> a == b}) { // valid header start
       val command = getString(12)
       val payloadSize = getNext4UInt.toInt
       val checkSum = getNextBytes(4).toArray

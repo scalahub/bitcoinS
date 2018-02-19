@@ -38,7 +38,7 @@ object DataStructures {
   
   case class P2PHeader(command:String, checkSum:Array[Byte], payloadLen:Int) {
     val checkSumHex:String = checkSum.encodeHex
-    val bytes = magicBytes ++ getFixedStringBytes(command, 12) ++ UInt32(payloadLen).bytes ++ checkSum
+    val bytes = getMagicNetBytes ++ getFixedStringBytes(command, 12) ++ UInt32(payloadLen).bytes ++ checkSum
   }
   
   class P2PMsg(command:String, payload:Payload){
