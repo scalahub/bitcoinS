@@ -18,10 +18,12 @@ object BloomFilter{
   val log2 = math.log(2)
   val log2sqr = log2 * log2
   def getFilter(maxItems:Int, falsePositive:Double):BloomFilter = {
-    val nTweak:UInt32 = scala.util.Random.nextInt.abs
-    getFilter(maxItems, falsePositive, nTweak)
+    getFilter(maxItems, falsePositive, scala.util.Random.nextInt.abs)
   }
-  def getFilter(maxItems:Int, falsePositive:Double, nTweak:UInt32) = {
+  def getFilter(maxItems:Int, falsePositive:Double, nTweak:Long):BloomFilter = {
+    getFilter(maxItems, falsePositive, nTweak, 0)
+  }
+  def getFilter(maxItems:Int, falsePositive:Double, nTweak:Long, nFlags:Int) = {
     require(falsePositive < 1)
     require(falsePositive > 0)
     require(maxItems > 0)
@@ -30,7 +32,7 @@ object BloomFilter{
     val nFilterBytes = (-math.log(falsePositive)*maxItems/log2sqr/8).min(BYTES_MAX).toInt
     
     val nHashFuncs = (nFilterBytes * 8 / maxItems * log2).min(FUNCS_MAX).toInt
-    new BloomFilter(nTweak, nHashFuncs, 0, nFilterBytes)
+    new BloomFilter(nTweak, nHashFuncs, nFlags, nFilterBytes)
   }
 }
 class BloomFilter private[sh] (val nTweak:UInt32, val nHashFuncs:UInt32, val nFlags:UInt8, val nFilterBytes:Int) {
@@ -51,13 +53,13 @@ Set the bits at all these positions to 1.
   if (nFilterBytes < 1) throw new Exception("Filter size must be > 0")
   val numBits = nFilterBytes * 8
   val filter = Array.fill[Boolean](numBits)(false)
-  def mod(int:Int, n:Int) = {
-    val rem = int % n
-    if (rem < 0) n + rem else rem
+  def mod(int:Int) = { 
+    // from https://github.com/bitcoinj/bitcoinj/blob/3177bd52a2bfa491c5902e95b8840030e1a31159/core/src/main/java/org/bitcoinj/core/BloomFilter.java
+    ((int&0xFFFFFFFFL) % numBits).toInt
   }
   val const = BigInt("FBA4C795", 16).toLong
   val hasheSeeds = 1 to nHashFuncs map(i => (i - 1) * const + nTweak)
-  val hashes = hasheSeeds.map{seed => s:Array[Byte] => mod(MurmurHash3.bytesHash(s, seed.toInt), numBits) }
+  val hashes = hasheSeeds.map{seed => s:Array[Byte] => mod(MurmurHash3.bytesHash(s, seed.toInt)) }
 
   def add(bytes:Array[Byte]) = {
     hashes.map(_(bytes)).foreach(i => filter(i) = true)
@@ -67,7 +69,7 @@ Set the bits at all these positions to 1.
    
   def getActualFalsePositiveRate(numItems:Int) = {
     math.pow(1 - math.exp(-(nHashFuncs*numItems.toDouble/numBits.toDouble)), nHashFuncs.uint32)
-    // (1-exp(-(kn/m)))^k
+    // (1-exp(-(kn/m)))^k // from wiki/bip37
   }
   def filterBitString = filter.map{
     case true => '1'
@@ -79,7 +81,6 @@ Set the bits at all these positions to 1.
       val decoded = Base58Check.decode(address)             
       val (prefix, pubKeyHashOrData) = (decoded(0), decoded.drop(1))  // first byte is network version and address type
       add(pubKeyHashOrData)
-      add(BitcoinUtil.getScriptPubKeyFromAddress(address).toArray)
     } else throw new Exception("Invalid address")
   }
 
@@ -88,9 +89,10 @@ Set the bits at all these positions to 1.
     addAddress(pubKey.address)
   }
 
-  def addTx(txid:String) = {
+  def addTx(txid:String, vOut:Int) = {
+    val vOutInt32:UInt32 = vOut
     val char32:Char32 = txid
-    add(char32.bytes.toArray)
+    add(char32.bytes.toArray ++ vOutInt32.bytes)
   }
   
   def bytes = filterBitString.reverse.grouped(8).map{byteString =>
