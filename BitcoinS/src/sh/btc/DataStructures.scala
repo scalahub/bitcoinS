@@ -162,13 +162,41 @@ object DataStructures {
   }
 
   class BlkSummary(hash:String, prevBlockHash:String, time:Long, version:Long, txHashes:Seq[String]) 
+  /*
+Bytes	Name	Data Type	Description
+4	version	int32_t	The block version number indicates which set of block validation rules to follow. See the list of block versions below.
+32	previous block header hash	char[32]	A SHA256(SHA256()) hash in internal byte order of the previous block’s header. This ensures no previous block can be changed without also changing this block’s header.
+32	merkle root hash	char[32]	A SHA256(SHA256()) hash in internal byte order. The merkle root is derived from the hashes of all transactions included in this block, ensuring that none of those transactions can be modified without modifying the header. See the merkle trees section below.
+4	time	uint32_t	The block time is a Unix epoch time when the miner started hashing the header (according to the miner). Must be strictly greater than the median time of the previous 11 blocks. Full nodes will not accept blocks with headers more than two hours in the future according to their clock.
+4	nBits	uint32_t	An encoded version of the target threshold this block’s header hash must be less than or equal to. See the nBits format described below.
+4	nonce	uint32_t	An arbitrary number miners change to modify the header hash in order to produce a hash less than or equal to the target threshold. If all 32-bit values are tested, the time can be updated or the coinbase transaction can be changed and the merkle root updated.
+The hashes are in internal byte order; the other values are all in little-endian order.
+
+An example header in hex:
+
+02000000 ........................... Block version: 2
+
+b6ff0b1b1680a2862a30ca44d346d9e8
+910d334beb48ca0c0000000000000000 ... Hash of previous block's header
+9d10aa52ee949386ca9385695f04ede2
+70dda20810decd12bc9b048aaab31471 ... Merkle root
+
+24d95a54 ........................... Unix time: 1415239972
+30c31b18 ........................... Target: 0x1bc330 * 256**(0x18-3)
+fe9f0864 ........................... Nonce
+   */
+  case class BlkHeader( // todo: put inside block (added later due to MerkleBlock)
+    hash:String, prevBlockHash:String, time:Long, version:Long, 
+    merkleRoot:String, nBits:Seq[Byte], nonce:Long
+  )
   
   case class Blk(
-    hash:String, prevBlockHash:String, time:Long, version:Long, txs:Seq[Tx],
-    merkleRoot:String, nBits:Seq[Byte], nonce:Long
-  ) extends BlkSummary(hash, prevBlockHash, time, version, txs.map(_.txid)) {
+    //hash:String, prevBlockHash:String, time:Long, version:Long, txs:Seq[Tx],
+    header:BlkHeader, txs:Seq[Tx]
+  ) extends BlkSummary(header.hash, header.prevBlockHash, header.time, header.version, txs.map(_.txid)) {
+    import header._
     if (nBits.size != 4) throw new Exception("NBits must be exactly 4 bytes")
-    override def toString = hash
+    override def toString = hash   
     def serialize = {
       // block is serialized as header + numTxs + txs
       // header = version(4)+prevBlkHeaderHash(32)+merkleRoot(32)+4(time)+4(nBits)+4(nonce)

@@ -97,7 +97,7 @@ class PeerGroup(listener:EventListener) extends Actor {
     case blk:Blk => // received from REMOTE via a Peer
       /* from a Peer. One of the peers has sent us a block, either as a response to a "getBlock" request issued by Node, 
          or as a resp to a "getblock" request issued by this peerGroupActor (which was resulting from a inv message received from the peer's remote node) */
-      if (blk.computeMerkleRoot == blk.merkleRoot) { // validate merkle root      
+      if (blk.computeMerkleRoot == blk.header.merkleRoot) { // validate merkle root      
         // If the claimed tx hashes are indeed in merkle root
         // Note that blk.hash is automatically computed from header, so we don't need to validate it
         // ToDo: other validation.
@@ -105,13 +105,13 @@ class PeerGroup(listener:EventListener) extends Actor {
         //    difficulty and height validation
         //    hardcode valid blocks from main chain
         //    
-        getBlockReq.get(blk.hash).map{case (actorRef, time) => // for any pending "getBlock" requests, 
-          getBlockReq -= blk.hash // remove from pending "getBlock" requests
+        getBlockReq.get(blk.header.hash).map{case (actorRef, time) => // for any pending "getBlock" requests, 
+          getBlockReq -= blk.header.hash // remove from pending "getBlock" requests
           actorRef ! Success(blk) // respond to appropriate caller
         }.getOrElse{
           // we are also maintaining a list of block hashes seen by this PeerGroup
-          if (!seenBlkHashes.contains(blk.hash)) { // if we have not seen this hash
-            seenBlkHashes += (blk.hash -> (blk.prevBlockHash, getTimeMillis)) // add to seenHashes
+          if (!seenBlkHashes.contains(blk.header.hash)) { // if we have not seen this hash
+            seenBlkHashes += (blk.header.hash -> (blk.header.prevBlockHash, getTimeMillis)) // add to seenHashes
             listener.onBlkMap.foreach(_._2(blk)) // invoke listeners in Node 
           }
         }

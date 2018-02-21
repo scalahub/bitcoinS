@@ -75,7 +75,7 @@ trait BlockChainParser {
             val computedMerkleRoot = blk.computeMerkleRoot
             //if (debug) print("parsed blk: "+blk.hash+" ")
             if (debug) print(".")
-            assert(blk.merkleRoot == computedMerkleRoot, s"Merkle root mismatch. Computed: $computedMerkleRoot. Required: ${blk.merkleRoot}")
+            assert(blk.header.merkleRoot == computedMerkleRoot, s"Merkle root mismatch. Computed: $computedMerkleRoot. Required: ${blk.header.merkleRoot}")
             // if (debug) println("with merkle root: "+computedMerkleRoot)
             blk.txs.foreach{tx =>
               // if (debug) println("Tx  "+tx.txid)              

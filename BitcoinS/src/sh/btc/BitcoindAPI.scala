@@ -140,7 +140,9 @@ s"""
     val nonce = (xml \ "nonce").text.toLong
     val time = (xml \ "time").text.toLong * 1000
     val txs = (xml \ "tx").map(Parser.parseTxXML)
-    Blk(blockHash, prevBlkHash, time, version, txs, merkleRoot, nBits, nonce)
+    val header = BlkHeader(blockHash, prevBlkHash, time, version, merkleRoot, nBits, nonce)
+  
+    Blk(header, txs)
   }
   
   def getBestBlockHash = {

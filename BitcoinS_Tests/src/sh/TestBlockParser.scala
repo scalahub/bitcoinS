@@ -227,7 +227,7 @@ class TestBlockParser(hex:String, blkHash:String, merkleRoot:String, json:String
   
   val parsedBlk = new BlockParser(bytes).getBlock // now test the parser
 
-  assert(parsedBlk.hash == blkHash)
+  assert(parsedBlk.header.hash == blkHash)
   val computedMerkleRoot = parsedBlk.computeMerkleRoot.toLowerCase
   assert(computedMerkleRoot == merkleRoot, s"Expected $merkleRoot. Found $computedMerkleRoot")
   

@@ -7,6 +7,7 @@ import sh.util.StringUtil._
 import sh.net.DataStructures._
 import sh.net.Parsers.RejectPayloadParser
 import sh.util.BytesUtil._
+import sh.btc.BlockHeaderParser
 import sh.ecc.Util._
 import sh.util.HashUtil._
 import sh.btc.BitcoinUtil._
@@ -155,13 +156,18 @@ Field Size	Description	Data type	Comments
     }
   }
   
+  class MerkleBlockPayloadParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
+    
+    val merkleBlock = {
+      val header = new BlockHeaderParser(getNextBytes(80).toArray).header
+      val txCount = getNext4UInt.toInt
+      val hashes = 1 to getCompactInt map (_ => getNextBytes(32))
+      val flags = getNextBytes(getCompactInt)
+      MerkleBlock(header, txCount, hashes, flags)
+    }
+  }
+  
   class PingPayloadParser(bytes:Array[Byte]) extends AbstractNetParser(bytes) {
     val ping = PingPayload(getNext8UInt)
   }
-}
-
-object Foo extends App{
-  val s = "027478421d72617465206c696d697465642066726565207472616e73616374696f6e4436ef629043567e77275587b78f40c9190f2361ad522495f2542ace8d1fff2e"
-  val r = new RejectPayloadParser(s.decodeHex).rej
-  println(r)
 }
