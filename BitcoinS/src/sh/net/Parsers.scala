@@ -161,8 +161,8 @@ Field Size	Description	Data type	Comments
     val merkleBlock = {
       val header = new BlockHeaderParser(getNextBytes(80).toArray).header
       val txCount = getNext4UInt.toInt
-      val hashes = 1 to getCompactInt map (_ => getNextBytes(32))
-      val flags = getNextBytes(getCompactInt)
+      val hashes = 1 to getCompactInt map (_ => getNextBytes(32).toArray)
+      val flags = getNextBytes(getCompactInt).toArray
       MerkleBlock(header, txCount, hashes, flags)
     }
   }

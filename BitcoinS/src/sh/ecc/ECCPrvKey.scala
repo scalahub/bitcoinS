@@ -24,7 +24,7 @@ case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
   // Follows: https://tools.ietf.org/html/rfc6979
   private def getDeterministicKRFromHash(hash:Array[Byte]) = {
     if (hash.size != 32) throw new Exception("Hash must be 32 bytes")
-    val h1 = getBits(hash) // a
+    val h1 = hash.getBits // a
     var V = Array.fill(32)(0x01.toByte) // b
     var K = Array.fill(32)(0x00.toByte) // c
     val intToOctets_key = intToOctets(bigInt)
@@ -37,7 +37,7 @@ case class ECCPrvKey(bigInt:BigInt, compressed:Boolean) {
     while(optKR.isEmpty) { // h
       var T = Array[Byte]() // h.1 // generates empty byte array
       while(T.size < 32) T = T ++ HMAC(K)(V)  // h.2
-      val k = bitsToInt(getBits(T)) // h.3      
+      val k = bitsToInt(T.getBits) // h.3      
       if (k < n && k > 0) { 
         val r = (k * G).x mod n
         if (r != 0) optKR = Some((k, r)) else {

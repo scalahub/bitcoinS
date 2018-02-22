@@ -55,14 +55,6 @@ object Util {
   }
   def bitsToOctets(bits:Seq[Boolean]) = intToOctets(bitsToInt(bits) mod n)
 
-  def getBits(bytes:Array[Byte]) = {
-    val hex = bytes.encodeHex
-    val bits = BigInt(hex, 16).toString(2)
-    (Array.fill(bytes.size * 8 - bits.size)('0') ++ bits).map{
-      case '1' => true
-      case '0' => false
-    }
-  }    
   // Needed for RFC6979 (end)
   
   def encodeDERSig(r:BigInt, s:BigInt) = {

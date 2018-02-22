@@ -7,7 +7,7 @@ import sh.bch._
 import sh.ecc.Util._
 import sh.util.BytesUtil._
 
-object TestUAHF1 extends App {
+object TestUAHF extends App {
   BitcoinS.isMainNet = false
   val int = BigInt("谺酽⿄밑艧鯌⤡鍪渃溰鬔봬渹".getBytes)
   val prvKey = new PrvKey_P2PKH_UAHF(new ECCPrvKey(int mod n, true /* compressed */), false /* testnet */)
@@ -91,7 +91,7 @@ object TestUAHF2 {
     (1, BigInt(300000000)), 
     (2, BigInt(300000000))
   )
-  val signed = TestUAHF1.prvKey.signTx(unsigned, values)
+  val signed = TestUAHF.prvKey.signTx(unsigned, values)
   assert(signed.encodeHex == UAHF_TestVectors2.signedHex)
   assert(new TxParser(signed).getTx.txid == "c4e05e92c867f56ba846b45f42cbbc335d1147884c62e29035609a0b9756dd6e")
   println("UAHF test 2 passed")

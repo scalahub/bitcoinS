@@ -11,7 +11,7 @@ import sh.btc.DataStructures._
 import sh.btc.BitcoinS._
 import sh.util.HashUtil._
 
-object TestAllTx extends App {
+object TestTx extends App {
   TestCorrectlySpendsP2PKH
   TestSegWit
   TestP2PKH
