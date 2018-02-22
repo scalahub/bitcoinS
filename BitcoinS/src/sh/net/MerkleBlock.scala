@@ -34,7 +34,7 @@ case class Leaf(num:Int) extends MerkleNode { // num is from 1 to numTx
   //var matched:Boolean = false
 }
 object MerkleBlock {
-  def getHashes(node:MerkleNode, flagBits:Iterator[Boolean], remainingHashes:Iterator[Array[Byte]]):(Array[Byte], Seq[Array[Byte]]) = {
+  private def getHashes(node:MerkleNode, flagBits:Iterator[Boolean], remainingHashes:Iterator[Array[Byte]]):(Array[Byte], Seq[Array[Byte]]) = {
     if (flagBits.next){
       node match{
         case Intermediate(leftChild, optRightChild) =>
@@ -63,20 +63,13 @@ case class MerkleBlock(header:BlkHeader, txCount:Int, hashes:Seq[Array[Byte]], f
     while (currNodes.size > 1) {
       currNodes = currNodes.grouped(2).map(new Intermediate(_)).toSeq
     }
-    val root = currNodes(0)
-
     // flag bits, packed per 8 in a byte, least significant bit first (including standard varint size prefix)
-    val flagIterator = flags.getBitsLsbFirst.toIterator
-    
+    val flagIterator = flags.getBitsLsbFirst.toIterator    
     val hashesIterator = hashes.toIterator
-    
-    val (rootHash, matched) = getHashes(root, flagIterator, hashesIterator)
-    
-    val remaingFlags = flagIterator.toArray
-    
-    val valid = header.merkleRoot == Char32(rootHash).rpcHash &&
-    hashesIterator.isEmpty &&
-    (flagIterator.isEmpty || (remaingFlags.size < 8 && remaingFlags.forall(!_)))
+    val (rootHash, matched) = getHashes(currNodes(0), flagIterator, hashesIterator) // currNodes(0) is root    
+    val remaingFlags = flagIterator.toArray    
+    val valid = header.merkleRoot == Char32(rootHash).rpcHash && hashesIterator.isEmpty &&
+                (flagIterator.isEmpty || (remaingFlags.size < 8 && remaingFlags.forall(!_)))
     
     (valid, if (valid) matched else Nil)
   } catch {

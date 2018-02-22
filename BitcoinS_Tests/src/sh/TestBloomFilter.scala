@@ -25,10 +25,10 @@ object TestBloomFilter extends App {
   //  00000000 ... nTweak: 0/none
   //  00 ......... nFlags: BLOOM_UPDATE_NONE
   TestBloomFilterBitJ
-  // TestBloomFilterNet
+  println("All bloom filter tests passed")
 }  
 
-object TestBloomFilterNet {
+object TestBloomFilterNet extends App { 
   BitcoinS.isMainNet = false
   val f = BloomFilter.getFilter(100, 0.01)
   val address0 = new PrvKey_P2PKH(new ECCPrvKey(BigInt("2345678900786756453545676787856546768"), true), false).pubKey.address
@@ -81,6 +81,7 @@ object TestBloomFilterBitJ2 {
 }
 
 object TestBloomFilterBitJ3 {
+  println("Bloom filter last test")
   // https://github.com/bitcoinj/bitcoinj/blob/a7cad0ede447d4bcba7dd55639df442a408df6fb/core/src/test/java/org/bitcoinj/core/BloomFilterTest.java
   BitcoinS.isMainNet = true
   val f = BloomFilter.getFilter(5 /* nItems */, 0.001, 0 /* nTweak */, 2 /* nFlags = UPDATE_P2PUBKEY_ONLY */)

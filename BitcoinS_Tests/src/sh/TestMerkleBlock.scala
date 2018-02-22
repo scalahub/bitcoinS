@@ -15,8 +15,9 @@ object TestMetkleBlock extends App{
   assert(merkleBlk.matchedHashes.size == 1)
   assert(merkleBlk.matchedHashes(0).encodeHex == "019f5b01d4195ecbc9398fbf3c3b1fa9bb3183301d7a1fb3bd174fcfa40a2b65")
   // https://bitcoin.org/en/developer-examples#creating-a-bloom-filter
-  println("Test 1 passed")
   TestMetkleBlock2
+  println("All Merkle block tests passed")
+  
 }
 object TestMetkleBlock2 {
   // https://github.com/BrendanEMahon/zincwallet/blob/ead933ac2403a2a8fefa9b61d1f1750058f405b6/ZincWalletTests/ZincWalletTests.m#L986
@@ -39,7 +40,6 @@ object TestMetkleBlock2 {
   assert(merkleBlk.matchedHashes(1).encodeHex == "ca5065ff9617cbcba45eb23726df6498a9b9cafed4f54cbab9d227b0035ddefb")
   assert(merkleBlk.matchedHashes(2).encodeHex == "bb15ac1d57d0182aaee61c74743a9c4f785895e563909bafec45c9a2b0ff3181")
   assert(merkleBlk.matchedHashes(3).encodeHex == "c9ab658448c10b6921b7a4ce3021eb22ed6bb6a7fde1e5bcc4b1db6615c6abc5")
-  println("Test 2 passed")
   TestMetkleBlock3
 }
 object TestMetkleBlock3 {
@@ -50,7 +50,6 @@ object TestMetkleBlock3 {
   assert(merkleBlk.isValid)
   assert(merkleBlk.matchedHashes.size == 1)
   assert(Char32(merkleBlk.matchedHashes(0)).rpcHash=="63194f18be0af63f2c6bc9dc0f777cbefed3d9415c4af83f3ee3a3d669c00cb5")
-  println("Test 3 passed")
   TestMetkleBlock4
 
 }
@@ -62,7 +61,6 @@ object TestMetkleBlock4 {
   assert(merkleBlk.isValid)
   assert(merkleBlk.matchedHashes.size == 1)
   assert(Char32(merkleBlk.matchedHashes(0)).rpcHash=="74d681e0e03bafa802c8aa084379aa98d9fcd632ddc2ed9782b586ec87451f20")
-  println("Test 4 passed")
   TestMetkleBlock5
 }
 object TestMetkleBlock5 {
@@ -73,15 +71,13 @@ object TestMetkleBlock5 {
   assert(merkleBlk.matchedHashes.size == 1)
   // https://github.com/scalahub/bitcoin-php/blob/9301654e4073aa38d5bb64d1774e3376251174ce/tests/Block/FilteredBlockTest.php#L178
   assert(Char32(merkleBlk.matchedHashes(0)).rpcHash=="63194f18be0af63f2c6bc9dc0f777cbefed3d9415c4af83f3ee3a3d669c00cb5")
-  println("Test 5 passed")
   TestMetkleBlock6
 }
 object TestMetkleBlock6 {
+  println("Merkle block last test")
   // https://github.com/scalahub/bitcoin-php/blob/9301654e4073aa38d5bb64d1774e3376251174ce/tests/Block/FilteredBlockTest.php#L171
   //                                                                                                          v
   val merkleBlockHex = "0100000079cda856b143d9db2c1caff01d1aecc8630d30625d10e8b4b8b0000000000000b50cc069d6a3e32e3ff84a5c41d9d3febe7c770fdcc96b2c3ff60abe184f196367291b4d4c86041b8fa45d630100000001b50cc069d6a3e33e3ff84a5c41d9d3febe7c770fdcc96b2c3ff60abe184f196301010100000079cda856b143d9db2c1caff01d1aecc8630d30625d10e8b4b8b0000000000000b50cc069d6a3e33e3ff84a5c41d9d3febe7c770fdcc96b2c3ff60abe184f196367291b4d4c86041b8fa45d630100000001b50cc069d6a3e33e3ff84a5c41d9d3febe7c770fdcc96b2c3ff60abe184f19630101"
   val merkleBlk = new MerkleBlockPayloadParser(merkleBlockHex.decodeHex).merkleBlock
   assert(!merkleBlk.isValid)
-  println("Test 6 passed")
-  // TestMetkleBlock5
 }
