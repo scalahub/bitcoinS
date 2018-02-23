@@ -5,11 +5,10 @@ import sh.util.BytesUtil._
 import scala.util.Random
 
 object TestBytesToBits extends App{
-  1 to 1000 foreach{i =>
+  1 to 500 foreach{i =>
     val b = (1 to 3000).map{j =>
       Random.nextInt.toByte
     }.toArray
-    print(".")
     assert(getBitsTest(b) zip b.getBits forall{case (l, r) => l == r})    
   }
   
@@ -21,7 +20,5 @@ object TestBytesToBits extends App{
       case '0' => false
     }
   }   
-  
-  println
-  println("passed")
+  println("Bytes to bits test passed")
 }
