@@ -24,15 +24,14 @@ fe9f0864 ........................... Nonce
 val header = versionBytes ++ prevBlockHashBytes++merkleRootBytes ++ timeBytes ++ nBits ++ nonceBytes
  
  */
-trait MerkleNode {
-  //var optHash:Option[Array[Byte]] = None
-}
+trait MerkleNode
+
 case class Intermediate(leftClild:MerkleNode, optRightChild:Option[MerkleNode]) extends MerkleNode {
   def this(i:Seq[MerkleNode]) = this(i(0), if (i.size > 1) Some(i(1)) else None)
 }
-case class Leaf(num:Int) extends MerkleNode { // num is from 1 to numTx
-  //var matched:Boolean = false
-}
+
+case class Leaf(num:Int) extends MerkleNode
+
 object MerkleBlock {
   private def getHashes(node:MerkleNode, flagBits:Iterator[Boolean], remainingHashes:Iterator[Array[Byte]]):(Array[Byte], Seq[Array[Byte]]) = {
     if (flagBits.next){
