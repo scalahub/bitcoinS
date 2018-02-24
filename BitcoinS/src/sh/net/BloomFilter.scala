@@ -27,7 +27,6 @@ object BloomFilter{
     require(falsePositive < 1)
     require(falsePositive > 0)
     require(maxItems > 0)
-    BigDecimal(-1)/(BigDecimal(2))
     
     val nFilterBytes = (-math.log(falsePositive)*maxItems/log2sqr/8).min(BYTES_MAX).toInt
     
