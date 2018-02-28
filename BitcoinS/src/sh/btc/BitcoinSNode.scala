@@ -1,11 +1,16 @@
 
 package sh.btc
 
-import BitcoinS._
+import sh.util.StringUtil._
 import sh.net.Node
 
-object BitcoinSNode extends Node{
-  lazy val id = "Bitcoin"
+class BitcoinSNode(isMainNet:Boolean) extends Node{
+  lazy val id = "Bitcoin"  
+  lazy val version:Int = 70003  
+  lazy val userAgent:String = "/BitcoinS:0.1/"     
+  lazy val serviceBit:Int = 0
+  lazy val magicBytes = if (isMainNet) "F9BEB4D9".decodeHex else "0B110907".decodeHex
+  
   val seeds = if (isMainNet) Seq(
     "seed.bitcoin.sipa.be", 
     "dnsseed.bluematt.me",  

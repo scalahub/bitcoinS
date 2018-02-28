@@ -4,6 +4,7 @@ package sh
 import sh.util.StringUtil._
 import sh.util.BytesUtil._
 import sh.net.Payloads.FilterLoadPayload
+import sh.btc.BitcoinSNode
 import sh.btc._
 import sh.ecc.ECCPrvKey
 import sh.ecc.ECCPubKey
@@ -38,9 +39,10 @@ object TestBloomFilterNet extends App {
   println(address1)
   assert(address0 == "mgmFkKscVJSP1RyZv5b32V1t8gvbfWeS1k")  
   assert(address1 == "n1W8PWXAfZNgPbpByj3nat4xuVKx4aUetj")  // won't match this address
-  BitcoinSNode.connectTo("localhost", false)
+  val node = new BitcoinSNode(BitcoinS.isMainNet)
+  node.connectTo("localhost", false)
   f.addAddress(address0)
-  BitcoinSNode.addOnTxHandler("1", tx => {
+  node.addOnTxHandler("1", tx => {
       tx.outs.foreach{out =>
         println("ONTX to address: "+out.optAddress.getOrElse("None"))
       }
@@ -48,7 +50,7 @@ object TestBloomFilterNet extends App {
   )
   
   Thread.sleep(1000)
-  BitcoinSNode.addFilter(f)
+  node.addFilter(f)
   println("added filter")
 }
 

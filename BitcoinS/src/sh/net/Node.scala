@@ -9,23 +9,26 @@ import sh.btc.TxParser
 import sh.util.StringUtil._
 
 trait Node extends EventListener {
-
-  val id:String // BTC / BCH
-    
+  val id:String // BTC / BCH    
   val seeds:Seq[String] // the default network nodes
+  val version:Int  
+  val userAgent:String    
+  val serviceBit:Int  
+  val magicBytes:Array[Byte]
+  /*  Network   Magic value	Sent over wire as
+      main      0xD9B4BEF9	F9 BE B4 D9
+      testnet   0xDAB5BFFA	FA BF B5 DA 
+      testnet3	0x0709110B	0B 11 09 07
+      namecoin	0xFEB4BEF9	F9 BE B4 FE   
+      bitcoinABC  e3:e1:f3:e8   */   
+  val system = ActorSystem(s"PeerGroup$id")  
 
-  val system = ActorSystem(s"PeerGroup$id")
-  
-  val peerGroup = system.actorOf(PeerGroup.props(this), name = s"PeerGroup$id")
+  val peerGroup = system.actorOf(
+    PeerGroup.props(
+      this, PeerGroupConfig(version, userAgent, serviceBit, magicBytes)
+    ), name = s"PeerGroup$id"
+  )
 
-  var onBlkMap = Map[String, Blk => Unit]() // listenerID -> listener
-  
-  var onTxMap = Map[String, Tx => Unit]() // listenerID -> listener
-
-  def addOnBlkHandler(id:String, onBlk:Blk => Unit) = onBlkMap += id -> onBlk 
-  
-  def addOnTxHandler(id:String, onTx:Tx => Unit) = onTxMap += id -> onTx 
-  
   import scala.concurrent.duration._
   import akka.pattern.ask 
   implicit val timeout = Timeout(30 seconds)
@@ -34,7 +37,7 @@ trait Node extends EventListener {
   private def await[T](future:Future[Any]) = Await.result(future, timeout.duration).asInstanceOf[T]
 
   // below commands to be exposed 
-  // below methods need to be sync
+  // Below methods make blocking calls to PeerGroup (Actor). These can result in blocking the application.
   def pushTx(tx:Tx):String = await[String](peerGroup ? ("pushtx", tx))
   
   def pushTx(hex:String):String = pushTx(new TxParser(hex.decodeHex).getTx)
@@ -43,8 +46,6 @@ trait Node extends EventListener {
  
   def getPeers = await[Array[String]](peerGroup ? "getpeers")
    
-  // Below methods make blocking calls to PeerGroup (Actor). 
-  // these can result in blocking the application. Left only for testing. 
   @deprecated("Use method ending in Async", "15 Jan 2018")
   def connectToAllSeeds(relay:Boolean = true) = seeds.map(connectTo(_, relay))
   
@@ -60,7 +61,6 @@ trait Node extends EventListener {
   @deprecated("Use method ending in Async", "15 Jan 2018")
   def addFilter(f:BloomFilter):Boolean = await[Boolean](peerGroup ? f)
     
-
   // Use below methods only (they make async calls to PeerGroup)
 
   def connectToAllSeedsAsync(relay:Boolean = true) = seeds.map(connectToAsync(_, relay))

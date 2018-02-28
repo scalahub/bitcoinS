@@ -16,13 +16,12 @@ import Payloads._
 
 object Parsers {
   
-  class MsgParser(val bytes:ByteString) {
-    //require(bytes.nonEmpty) // sanity check for testing
-    val result:Option[(P2PHeader, Option[ByteString])] = new HeaderParser(bytes).header.map(h => (h, new PayloadParser(bytes.drop(headerLen).take(h.payloadLen), h).result))
+  class MsgParser(magicBytes:Array[Byte], val bytes:ByteString) {
+    val result:Option[(P2PHeader, Option[ByteString])] = new HeaderParser(magicBytes, bytes).header.map(h => (h, new PayloadParser(bytes.drop(headerLen).take(h.payloadLen), h).result))
   }
   
-  class HeaderParser(bytes:ByteString) extends AbstractNetParser(bytes.toArray) {
-    val header = if (bytes.size >= 24 && (getNextBytes(4) zip getMagicNetBytes).forall{case (a,b)=> a == b}) { // valid header start
+  class HeaderParser(magicBytes:Array[Byte], bytes:ByteString) extends AbstractNetParser(bytes.toArray) {
+    val header = if (bytes.size >= 24 && (getNextBytes(4) zip magicBytes).forall{case (a,b)=> a == b}) { // valid header start
       val command = getString(12)
       val payloadSize = getNext4UInt.toInt
       val checkSum = getNextBytes(4).toArray

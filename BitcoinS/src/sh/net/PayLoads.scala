@@ -36,7 +36,15 @@ object Payloads {
   } with Payload(numItems.bytes ++ netAddrs.flatMap(_.bytes)) {
     def this(netAddr:NetAddrPayload) = this(Seq(netAddr))
     def this(address:Array[Byte], port:Int) = this(new NetAddrPayload(address, port))
-    def this(sAddress:InetSocketAddress) = this(new NetAddrPayload(sAddress.getAddress.getAddress, sAddress.getPort))
+    def this(sAddresses:Array[InetSocketAddress]) = this(
+      sAddresses.map(sAddress =>       
+        new NetAddrPayload(sAddress.getAddress.getAddress, sAddress.getPort)
+      )
+    )
+    def this(sAddress:InetSocketAddress) = this(Array(sAddress))
+    //    def this(sAddress:InetSocketAddress) = this(
+    //      new NetAddrPayload(sAddress.getAddress.getAddress, sAddress.getPort)
+    //    )    
   }
   
   case class VersionPayload(
@@ -46,13 +54,15 @@ object Payloads {
     version.bytes ++ services.bytes ++ timeStamp.bytes ++ addr_recv.bytes ++ addr_from.bytes ++ 
     nonce.bytes ++ getVarStringBytes(userAgent) ++ startHeight.bytes ++ relay.bytes
   ) {
-    def this(local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean) = this(
-      ourVersion, BigInt(ourServiceBit), getTimeSec, 
+    def this(
+      version:Int, serviceBit:Int, userAgent:String, 
+      local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean
+    ) = this(
+      version, BigInt(serviceBit), getTimeSec, 
       new NetAddrPayload(local.getAddress.getAddress, local.getPort, true),
       new NetAddrPayload(remote.getAddress.getAddress, remote.getPort, true),
-      BigInt(nonce.getAndIncrement), defaultUserAgent, 1, relay
+      BigInt(nonce.getAndIncrement), userAgent, 1, relay
     )
-    def this(local:InetSocketAddress, remote:InetSocketAddress) = this(local, remote, true)
   }
   /*    https://en.bitcoin.it/wiki/Protocol_documentation#Network_address
    (12 bytes 00 00 00 00 00 00 00 00 00 00 FF FF, followed by the 4 bytes of the IPv4 address). 

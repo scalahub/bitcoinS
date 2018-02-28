@@ -30,23 +30,22 @@ object DataStructures {
      F9 BE B4 D9                                                                   - Main network magic bytes
      76 65 72 73 69 6F 6E 00 00 00 00 00                                           - "version" command
      64 00 00 00                                                                   - Payload is 100 bytes long
-     3B 64 8D 5A                                                                   - payload checksum 
-     
-     e3:e1:f3:e8
-   */
+     3B 64 8D 5A                                                                   - payload checksum      
+     e3:e1:f3:e8   bch */
     
   
   case class P2PHeader(command:String, checkSum:Array[Byte], payloadLen:Int) {
     val checkSumHex:String = checkSum.encodeHex
-    val bytes = getMagicNetBytes ++ getFixedStringBytes(command, 12) ++ UInt32(payloadLen).bytes ++ checkSum
+    val bytes:Array[Byte] = getFixedStringBytes(command, 12).toArray ++ UInt32(payloadLen).bytes ++ checkSum
   }
   
   class P2PMsg(command:String, payload:Payload){
     def this(command:String) = this(command, new Payload(Nil))
     val header = P2PHeader(command, payload.checkSum, payload.len) 
-    val bytes = header.bytes ++ payload.bytes
+    val bytes:Array[Byte] = header.bytes ++ payload.bytes
     override def toString = "command: "+command+"payload: "+payload.toString
   }
+  
   type InvType = UInt32
   
   object ERROR extends InvType(0) // not used as of now
@@ -85,7 +84,8 @@ object DataStructures {
   // below used for sending to others
   object VerAckMsg extends P2PMsg(verAckCmd)
   
-  object GetAddrMsg extends P2PMsg(getAddrCmd) // unused as of now
+  // object GetAddrMsg extends P2PMsg(getAddrCmd) // unused as of now
+  case class AddrMsg(inetAddresses:Array[InetSocketAddress]) extends P2PMsg(addrCmd, new AddrPayload(inetAddresses)) // unused as of now
   
   case class GetDataMsg(invVectors:Seq[InvVector]) extends P2PMsg(getDataCmd, new InvPayload(invVectors)) {
     def this(blockHash:String) = this(Seq(InvVector(MSG_BLOCK, blockHash)))
@@ -101,7 +101,8 @@ object DataStructures {
   
   case class PushTxInvMsg(txRpcHash:String) extends P2PMsg(invCmd, new InvPayload(InvVector(MSG_TX, txRpcHash))) 
   
-  case class VersionMsg(local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean) extends P2PMsg(versionCmd, new VersionPayload(local, remote, relay))
+  case class VersionMsg(version:Int,  userAgent:String, serviceBit:Int, local:InetSocketAddress, remote:InetSocketAddress, relay:Boolean) 
+    extends P2PMsg(versionCmd, new VersionPayload(version, serviceBit,  userAgent, local, remote, relay))
   
   case class PongMsg(ping:PingPayload) extends P2PMsg(pongCmd, PongPayload(ping))
   

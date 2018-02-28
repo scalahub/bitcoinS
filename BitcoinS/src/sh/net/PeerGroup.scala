@@ -9,6 +9,7 @@ import sh.util.StringUtil._
 import sh.util.AkkaUtil._
 import akka.actor.Status._
 import akka.actor.{ Actor, ActorRef, Props, Terminated }
+import java.net.InetSocketAddress
 import scala.collection.mutable.{Map => MMap}
 import scala.concurrent.duration._
 
@@ -43,16 +44,20 @@ import scala.concurrent.duration._
  */
 
 object PeerGroup {
-  def props(listener:EventListener) = Props(classOf[PeerGroup], listener)  
+  def props(listener:EventListener, config:PeerGroupConfig) = Props(classOf[PeerGroup], listener, config)  
 }
 trait EventListener {
-  var onBlkMap:Map[String, Blk => Unit] // listener id, listener
-  var onTxMap:Map[String, Tx => Unit] // listener id, listener    
+  var onBlkMap = Map[String, Blk => Unit]() // listenerID -> listener  
+  var onTxMap = Map[String, Tx => Unit]() // listenerID -> listener
+  def addOnBlkHandler(id:String, onBlk:Blk => Unit) = onBlkMap += id -> onBlk   
+  def addOnTxHandler(id:String, onTx:Tx => Unit) = onTxMap += id -> onTx 
 }
 
 import PeerGroup._
 
-class PeerGroup(listener:EventListener) extends Actor {
+case class PeerGroupConfig(version:Int, userAgent:String, serviceBit:Int, magicBytes:Array[Byte])
+
+class PeerGroup(listener:EventListener, config:PeerGroupConfig) extends Actor {
   type Time = Long // millis
   type BlockHash = String
   type PrevBlockHash = String
@@ -92,19 +97,36 @@ class PeerGroup(listener:EventListener) extends Actor {
     case f@Failure(_) => sender ! f // error, send immediately
     case Success(_) => // do nothing, its an async call. 
   }
-  
+
+  def sendToAllPeers(m:P2PMsg) = {
+    peers.values.foreach{ // send to all
+      case (peer, time) => peer ! m
+    }     
+  }
   def receive = {
+    
+    case Terminated(ref) => // DeathWatch on peer
+      peers = peers.filter{
+        case (host, `ref`) => false
+        case _ => true
+      }
+    
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    /////// Below messages are received from p2p network, i.e., from P2PClient (Actor) ////////
+    ///////////////////////////////////////////////////////////////////////////////////////////      
+    
     case blk:Blk => // received from REMOTE via a Peer
       /* from a Peer. One of the peers has sent us a block, either as a response to a "getBlock" request issued by Node, 
          or as a resp to a "getblock" request issued by this peerGroupActor (which was resulting from a inv message received from the peer's remote node) */
       if (blk.computeMerkleRoot == blk.header.merkleRoot) { // validate merkle root      
-        // If the claimed tx hashes are indeed in merkle root
-        // Note that blk.hash is automatically computed from header, so we don't need to validate it
-        // ToDo: other validation.
-        //    Tx correctly signed (need UTXO set)
-        //    difficulty and height validation
-        //    hardcode valid blocks from main chain
-        //    
+        /* Above checks if the claimed tx hashes are indeed in merkle root
+           Note that blk.hash is automatically computed from header, so we don't need to validate it
+         
+           ToDo: other validation.
+            Tx correctly signed (need UTXO set)
+            difficulty and height validation
+            hardcode valid blocks from main chain */
+            
         getBlockReq.get(blk.header.hash).map{case (actorRef, time) => // for any pending "getBlock" requests, 
           getBlockReq -= blk.header.hash // remove from pending "getBlock" requests
           actorRef ! Success(blk) // respond to appropriate caller
@@ -118,29 +140,9 @@ class PeerGroup(listener:EventListener) extends Actor {
       }
 
     case rej:RejectMessage => 
-      println(s"Reject: $rej")
       /* from a peerActor (one of peerActor received a tx from its remote counterpart, and it has forwarded it to)
          its peerGroup (this one) for further processing */
-      
-    case ("filteradd", data:Array[Byte]) => 
-      usingConnectedAsync{
-        sender ! Success(true)
-        peers.values.foreach{case (peer, time) => peer ! FilterAddMsg(data)} // send to all
-      }
-    case "filterclear" => 
-      usingConnectedAsync{
-        sender ! Success(true)
-        peers.values.foreach{case (peer, time) => peer ! FilterClearMsg} // send to all
-      }
-    case f:BloomFilter =>
-      usingConnectedAsync{
-        sender ! Success(true)
-        peers.values.foreach{
-          case (peer, time) => 
-            peer ! FilterLoadMsg(f)
-            peer ! MemPoolMsg
-        } // send to all
-      }
+      println(s"[Reject] $rej")
       
     case tx:Tx => 
       /* from a peerActor (one of peerActor received a tx from its remote counterpart, and it has forwarded it to)
@@ -153,12 +155,24 @@ class PeerGroup(listener:EventListener) extends Actor {
         // todo: validate tx,  push to other peers and invoke handler onTx
       }
 
-    case ("getdata", inv:InvPayload) => // from peerActor (getData request received from remote side)
+    case addr:AddrPayload => // from peerActor
+      
+    case `verAckCmd` => // from peerActor
+      
+    case `getAddrCmd` => // from peerActor
+      // uncomment below after implementing inetAddresses below
+      // val inetAddresses:Array[InetSocketAddress] = ???
+      // sender ! AddrMsg(inetAddresses)
+
+    case (`notFoundCmd`, inv:InvPayload) => // from peerActor (tesponse to our getData request sent to remote side)
+      // TODO: do something with inv
+      
+    case (`getDataCmd`, inv:InvPayload) => // from peerActor (getData request received from remote side)
       inv.invVectors.collect{ 
         case InvVector(MSG_TX, char32) => // as of now, remote can only request for tx that we originate (i.e. in pushedTx)
           pushedTx.get(char32.rpcHash).map{case (tx, time) => 
-            sender ! TxMsg(tx)
-          } // send the Tx 
+            sender ! TxMsg(tx) // send the Tx 
+          } 
       }    
       
     case inv:InvPayload => // from peerActor (inv from others, declaring new items -- tx or block)
@@ -178,26 +192,6 @@ class PeerGroup(listener:EventListener) extends Actor {
       
       if (invToSend.nonEmpty) sender ! GetDataMsg(invToSend) // send the getdata command for the data we need
       
-    case Terminated(ref) => // DeathWatch 
-      peers = peers.filter{
-        case (host, `ref`) => false
-        case _ => true
-      }
-      
-    // Below messages are received from a Node object
-    case ("pushtx", tx:Tx) =>  // from Node (app has send us a "push" tx request (via Node) and we need to send it to others)
-      usingConnectedAsync{
-        pushedTx += tx.txid -> (tx, getTimeMillis) // add to push tx map
-        sender ! Success(tx.txid)
-        peers.values.foreach{case (peer, time) => peer ! PushTxInvMsg(tx.txid)} // send to all
-      }
-        
-    case ("getblock", hash:String) => // from Node (app has made a req (via Node) to get a block)
-      usingConnectedAsync{
-        getBlockReq += hash -> (sender, getTimeMillis)
-        val (hostName, (peer, time)) = peers.head 
-        peer ! new GetDataMsg(hash) // send only to first peer as of now
-      }
     //connected
     case ("connected", hostName:String) =>
       peers += (hostName -> (sender, getTimeMillis))
@@ -209,13 +203,49 @@ class PeerGroup(listener:EventListener) extends Actor {
         case _ => true
       }
 
+    ///////////////////////////////////////////////////////////////      
+    /////// Below messages are received from a Node object ////////
+    ///////////////////////////////////////////////////////////////      
+    
+    case f:BloomFilter => // filterload
+      usingConnectedAsync{
+        sender ! Success(true)
+        sendToAllPeers(FilterLoadMsg(f))
+        sendToAllPeers(MemPoolMsg)
+      }
+      
+    case ("filteradd", data:Array[Byte]) => 
+      usingConnectedAsync{
+        sender ! Success(true)
+        sendToAllPeers(FilterAddMsg(data)) // send to all
+      }
+    case "filterclear" => 
+      usingConnectedAsync{
+        sender ! Success(true)
+        sendToAllPeers(FilterClearMsg) // send to all
+      }
+    case ("pushtx", tx:Tx) =>  // from Node (app has send us a "push" tx request (via Node) and we need to send it to others)
+      usingConnectedAsync{
+        pushedTx += tx.txid -> (tx, getTimeMillis) // add to push tx map
+        sender ! Success(tx.txid)
+        sendToAllPeers(PushTxInvMsg(tx.txid)) // send to all
+      }
+        
+    case ("getblock", hash:String) => // from Node (app has made a req (via Node) to get a block)
+      usingConnectedAsync{
+        getBlockReq += hash -> (sender, getTimeMillis)
+        // sendToAllPeers(new GetDataMsg(hash))
+        val (hostName, (peer, time)) = peers.head 
+        peer ! new GetDataMsg(hash) // send only to first peer as of now
+      }
+      
     case "getpeers" =>  // from Node (app made a getpeers req) 
       val now = getTimeMillis
       sender ! peers.map{case (hostName, (_, time)) => s"$hostName (${((now - time)/100)}) seconds"}.toArray
       
     case (m@("connect"|"connectAsync"), hostName:String, relay:Boolean) => // from Node (app made a connect req)
       val resp = usingFailure(peers.contains(hostName))(s"Already conntected to $hostName"){
-        val peer = Peer.connectTo(hostName, self, relay)        
+        val peer = Peer.connectTo(hostName, self, PeerConfig(relay, config.version, config.userAgent, config.serviceBit, config.magicBytes))        
         // https://doc.akka.io/docs/akka/2.3.4/scala/actors.html#Lifecycle_Monitoring_aka_DeathWatch
         context.watch(peer) // new peerActor created, add to watched peers
         "ok"
