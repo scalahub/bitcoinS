@@ -21,7 +21,7 @@ object RunStandAloneTests {
     TestUAHF,
     TestBloomFilter,
     TestBytesToBits,
-    TestMetkleBlock
+    TestMerkleBlock
   )
   def main(args:Array[String]):Unit = {
     objects.foreach{o =>

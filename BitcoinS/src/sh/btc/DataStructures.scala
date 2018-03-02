@@ -61,7 +61,7 @@ object DataStructures {
     @deprecated("Used only for BCH. Not a part of Bitcoin", "07 Jan 2018")
     def getHashSigned_P2PKH_UAHF(whichInput:Int, inputAddress:String, value:BigInt) = { // which input indices to sign, with amount. Last param is pubKeyHashed via RIPEMD160(SHA256(_))
       val currIn = ins(whichInput) 
-      val nVer = getFixedIntBytes(version, 4) // signed As per rules
+      val nVer = getFixedIntBytes(version, 4) // signed as per rules (allows negative values)
       val hashPrevOuts = dsha256(ins.flatMap(in => in.txHash.decodeHex.reverse ++ getFixedIntBytes(in.vOut, 4)))  // vOut is signed
       val hashSeq = dsha256(ins.flatMap(in => getFixedIntBytes(in.seqNum, 4))) // unsigned
       val outPoint = currIn.txHash.decodeHex.reverse ++ getFixedIntBytes(BigInt(currIn.vOut), 4)                
@@ -70,8 +70,8 @@ object DataStructures {
       if (isMainNetAddr != isMainNet) throw new Exception(s"MainNet mismatch between $inputAddress (mainNet: $isMainNetAddr) and current setting (mainNet: $isMainNet)") 
 
       val scriptCode = scriptPubKey.size.toByte +: scriptPubKey
-      val amt = getFixedIntBytes(value, 8) // unsigned
-      val nSeq = getFixedIntBytes(currIn.seqNum, 4) // unsigned
+      val amt = getFixedIntBytes(value, 8) // unsigned (no negative values)
+      val nSeq = getFixedIntBytes(currIn.seqNum, 4) // unsigned (no negative values)
       val hashOuts = dsha256(
         outs.flatMap(out =>
           getFixedIntBytes(out.value, 8) ++ out.optScriptPubKey.map{scriptPubKey =>
@@ -96,13 +96,13 @@ object DataStructures {
 
     def getHashSigned_P2SH_P2WPKH(whichInput:Int, value:BigInt, hash160PubKey:Seq[Byte]) = { // which input indices to sign, with amount. Last param is pubKeyHashed via RIPEMD160(SHA256(_))
       val currIn = ins(whichInput) 
-      val nVer = getFixedIntBytes(version, 4) // signed As per rules
+      val nVer = getFixedIntBytes(version, 4) // signed as per rules (allows negative values)
       val hashPrevOuts = dsha256(ins.flatMap(in => in.txHash.decodeHex.reverse ++ getFixedIntBytes(in.vOut, 4)))  // vOut is signed
       val hashSeq = dsha256(ins.flatMap(in => getFixedIntBytes(in.seqNum, 4))) // unsigned
       val outPoint = currIn.txHash.decodeHex.reverse ++ getFixedIntBytes(BigInt(currIn.vOut), 4)                
       val scriptCode = p2sh_p2wpkh_ScriptCode_Prefix ++ hash160PubKey ++ p2sh_p2wpkh_ScriptCode_Suffix
-      val amt = getFixedIntBytes(value, 8) // unsigned
-      val nSeq = getFixedIntBytes(currIn.seqNum, 4) // unsigned
+      val amt = getFixedIntBytes(value, 8) // unsigned (allows negative values)
+      val nSeq = getFixedIntBytes(currIn.seqNum, 4) // unsigned (no negative values)
       val hashOuts = dsha256(
         outs.flatMap(out =>
           getFixedIntBytes(out.value, 8) ++ out.optScriptPubKey.map{scriptPubKey =>
@@ -185,13 +185,12 @@ b6ff0b1b1680a2862a30ca44d346d9e8
 30c31b18 ........................... Target: 0x1bc330 * 256**(0x18-3)
 fe9f0864 ........................... Nonce
    */
-  case class BlkHeader( // todo: put inside block (added later due to MerkleBlock)
+  case class BlkHeader( 
     hash:String, prevBlockHash:String, time:Long, version:Long, 
     merkleRoot:String, nBits:Seq[Byte], nonce:Long
   )
   
   case class Blk(
-    //hash:String, prevBlockHash:String, time:Long, version:Long, txs:Seq[Tx],
     header:BlkHeader, txs:Seq[Tx]
   ) extends BlkSummary(header.hash, header.prevBlockHash, header.time, header.version, txs.map(_.txid)) {
     import header._
@@ -199,7 +198,6 @@ fe9f0864 ........................... Nonce
     override def toString = hash   
     def serialize = {
       // block is serialized as header + numTxs + txs
-      // header = version(4)+prevBlkHeaderHash(32)+merkleRoot(32)+4(time)+4(nBits)+4(nonce)
       val versionBytes = getFixedIntBytes(version, 4)
       val timeBytes = getFixedIntBytes(time, 4) // unsigned
       val nonceBytes = getFixedIntBytes(nonce, 4) // unsigned

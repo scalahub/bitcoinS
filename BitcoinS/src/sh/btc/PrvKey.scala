@@ -42,7 +42,7 @@ import sh.util.BigIntUtil._
           PubKey_P2PKH_UAHF
         -------------------------------------------
         PubKey also encapsulates: 
-          Address (string) depending on the type of network, compression used and subclass pf PubKey
+          Address (string): depends on type of network, compression used and the subclass of PubKey
  */
 object PrvKey {
   private def getECCPrvKeyAndNet(wif:String) = {

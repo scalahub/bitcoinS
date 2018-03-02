@@ -29,10 +29,6 @@ abstract class AbstractParser(bytes:Array[Byte]) {
   // signed. NOTE: uses direct byte conversion to signed number
   def getNext4SInt = getSInt4LittleEndian(getNextBytes(4).toArray)
   
-  val ff = 0xff.toByte
-  val fe = 0xff.toByte
-  val fd = 0xff.toByte
- 
   def getCompactInt = { 
     val ctr = getAndIncrCtr
     val nextNumBytes = bytes(ctr) & 0xFF match {

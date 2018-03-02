@@ -21,12 +21,13 @@ object DataStructures {
   class Payload(val bytes:Seq[Byte]) {
     val checkSum = dsha256(bytes).take(4)
     val checkSumHex = checkSum.encodeHex
-    val len:UInt32 = bytes.size         
+    val len:UInt32 = bytes.size     
+    override def toString = bytes.toArray.encodeHex    
   }
   
   val headerLen = 24 // headers are always 24 bytes. Setting it once here to avoid hardcoding elsewhere
   
-  /*      Message Header: https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
+  /* Message Header: https://en.bitcoin.it/wiki/Protocol_documentation#Message_structure
      F9 BE B4 D9                                                                   - Main network magic bytes
      76 65 72 73 69 6F 6E 00 00 00 00 00                                           - "version" command
      64 00 00 00                                                                   - Payload is 100 bytes long
@@ -43,7 +44,7 @@ object DataStructures {
     def this(command:String) = this(command, new Payload(Nil))
     val header = P2PHeader(command, payload.checkSum, payload.len) 
     val bytes:Array[Byte] = header.bytes ++ payload.bytes
-    override def toString = "command: "+command+"payload: "+payload.toString
+    override def toString = s"command: $command, payload: $payload"
   }
   
   type InvType = UInt32
@@ -60,7 +61,7 @@ object DataStructures {
        The same holds for txids */      
     def this(invType:InvType, hashRpcHex:String) = this(invType, hashRpcHex:Char32)
     val bytes = invType.bytes ++ hash.bytes 
-    override def toString = "InvType: "+invType+": "+hash.rpcHash
+    override def toString = s"InvType: $invType, hash: ${hash.rpcHash}"
   }
   
   val verAckCmd = "verack"
@@ -84,7 +85,8 @@ object DataStructures {
   // below used for sending to others
   object VerAckMsg extends P2PMsg(verAckCmd)
   
-  // object GetAddrMsg extends P2PMsg(getAddrCmd) // unused as of now
+  object GetAddrMsg extends P2PMsg(getAddrCmd) // unused as of now
+  
   case class AddrMsg(inetAddresses:Array[InetSocketAddress]) extends P2PMsg(addrCmd, new AddrPayload(inetAddresses)) // unused as of now
   
   case class GetDataMsg(invVectors:Seq[InvVector]) extends P2PMsg(getDataCmd, new InvPayload(invVectors)) {

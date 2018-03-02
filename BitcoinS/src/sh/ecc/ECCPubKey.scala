@@ -62,23 +62,4 @@ case class ECCPubKey(point:Point, compressed:Boolean) {
     val byteIndex = if (compressed) index + 4 else index 
     encodeRecoverySigForIndex(byteIndex, r, s)
   }
-  /* // other verify constructs used for testing but not needed in production. Hence commented out
-  def verify(msg:String, signature:String):Boolean = {
-    val (r, s) = decodeDERSig(signature)
-    verify(msg, r, s)
-    /*  Example:
-	30 46 02 21 00E755B8C887AF3C97822875908B1BD4566ECAC5BEE9A2BF736C19A4E4BE74F5F8
-	      02 21 00A18B52AE9FBE0DE525F6FA58B68D5AC74308886AAC1AA0AB4A7EC55087C85C0C */            
-  }
-  def verifyMessageBitcoinD(message:String, r:BigInt, s:BigInt) = {
-    val msg = Seq(magicBytes.size.toByte) ++ magicBytes ++ Seq(message.size.toByte) ++ message.getBytes
-    val hash = dsha256(msg)
-    verify(hash, r, s)
-  }
-  
-  // verify signature on msg (human string, such as "Hello") and signature in r, s form
-  def verify(msg:String, r:BigInt, s:BigInt):Boolean = verify(sha256Bytes2Bytes(msg.getBytes), r, s)
-  */
-
-
 }

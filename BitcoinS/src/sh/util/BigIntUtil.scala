@@ -5,7 +5,7 @@ import sh.ecc.Point
 import sh.util.StringUtil._
 
 class BetterBigInt (bigInt:BigInt) {
-  def *(P:Point) = P * bigInt
+  def *(P:Point) = P * bigInt // allows writing x * P for BigInt x and Point P
   val isEven = (bigInt mod 2) == 0
   val isOdd = !isEven
   val toHex = {
@@ -22,8 +22,8 @@ class BetterBigInt (bigInt:BigInt) {
     
   val toBytes = toHex.decodeHex
   def getBigIntBytesBitJ = {
-    /* // copied from Bitcoinj source. In case we need to replicate getKeyBytes from BitcoinJ
-     * // below is original source
+    /* copied from Bitcoinj source. In case we need to replicate getKeyBytes from BitcoinJ
+     * below is original source
       public static byte[] bigIntegerToBytes(BigInteger b, int numBytes) {
         checkArgument(b.signum() >= 0, "b must be positive or zero");
         checkArgument(numBytes > 0, "numBytes must be positive");

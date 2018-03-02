@@ -19,7 +19,7 @@ class PrvKey_P2PKH (eccPrvKey:ECCPrvKey, mainNet:Boolean) extends PrvKey(eccPrvK
       val hash = tx.getHashSigned_P2PKH(i, pubKey.address)
       val sigBytes = eccPrvKey.signHash(hash) :+ 0x01.toByte // append a 0x01 to indicate SIGHASH_ALL
       tx.ins(i).setScriptSig((sigBytes.size.toByte +: sigBytes) ++ (pubKey.bytes.size.toByte +: pubKey.bytes))
-      tx.wits(i) = TxWit(Nil) //       // set also the corresponding witness to empty
+      tx.wits(i) = TxWit(Nil)       // set also the corresponding witness to empty
     }
     createSegWitTx(tx.version, tx.ins zip tx.wits, tx.outs, tx.lockTime)
   }

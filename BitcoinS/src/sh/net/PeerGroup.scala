@@ -9,7 +9,6 @@ import sh.util.StringUtil._
 import sh.util.AkkaUtil._
 import akka.actor.Status._
 import akka.actor.{ Actor, ActorRef, Props, Terminated }
-import java.net.InetSocketAddress
 import scala.collection.mutable.{Map => MMap}
 import scala.concurrent.duration._
 
@@ -254,8 +253,7 @@ class PeerGroup(listener:EventListener, config:PeerGroupConfig) extends Actor {
       
     case (m@("disconnect"|"disconnectAsync"), hostName:String) => // from Node (app made a disconnect req)
       val resp = usingFailure(!peers.contains(hostName))(s"Not conntected to $hostName"){
-        peers.get(hostName).map{case (peer, time) => peer ! "stop"}
-        // peers -= hostName // handled in case Terminated(...) =>
+        peers.get(hostName).map{case (peer, time) => peer ! "stop"}        
         "ok"
       }
       if (m == "disconnect") sender ! resp

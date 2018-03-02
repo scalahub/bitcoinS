@@ -57,8 +57,8 @@ Set the bits at all these positions to 1.
     ((int&0xFFFFFFFFL) % numBits).toInt
   }
   val const = BigInt("FBA4C795", 16).toLong
-  val hasheSeeds = 1 to nHashFuncs map(i => (i - 1) * const + nTweak)
-  val hashes = hasheSeeds.map{seed => s:Array[Byte] => mod(MurmurHash3.bytesHash(s, seed.toInt)) }
+  val hashSeeds = 1 to nHashFuncs map(i => (i - 1) * const + nTweak)
+  val hashes = hashSeeds.map{seed => s:Array[Byte] => mod(MurmurHash3.bytesHash(s, seed.toInt)) }
 
   def add(bytes:Array[Byte]) = {
     hashes.map(_(bytes)).foreach(i => filter(i) = true)

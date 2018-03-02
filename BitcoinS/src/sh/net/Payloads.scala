@@ -42,9 +42,6 @@ object Payloads {
       )
     )
     def this(sAddress:InetSocketAddress) = this(Array(sAddress))
-    //    def this(sAddress:InetSocketAddress) = this(
-    //      new NetAddrPayload(sAddress.getAddress.getAddress, sAddress.getPort)
-    //    )    
   }
   
   case class VersionPayload(

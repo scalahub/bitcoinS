@@ -9,8 +9,8 @@ class TxParser(bytes:Array[Byte]) extends AbstractParser(bytes) {
   protected def getTxIns = {
     1 to getCompactInt map {_ => // getCompactInt returns num Inputs
       val txHash = getNext32Hash // also converts from little endian to normal
-      val vOut = getNext4UInt // signed // can be -1  // should be unsigned as per protocol spec
-      // but coinbase inputs have -1 
+      val vOut = getNext4UInt // signed (allows negative values)
+      // above should be unsigned as per design, but coinbase inputs have vOut -1 
     
       val scriptSig = getNextBytes(getCompactInt) // getCompactInt returns the size of input script
       val seqNumBytes = getNextBytes(4) // 4 bytes for sequence number      

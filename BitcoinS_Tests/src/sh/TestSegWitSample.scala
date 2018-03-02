@@ -3,7 +3,6 @@ package sh
 
 import sh.btc.DataStructures._
 import sh.btc._
-//import sh.util.Hex
 import sh.btc.BitcoinUtil._
 import sh.ecc._
 import sh.ecc.Util._
