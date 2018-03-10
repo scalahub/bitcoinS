@@ -14,7 +14,7 @@ import sh.ecc.Util._
 import sh.util.HashUtil._
 
 object TestPeer extends App {
-  //isMainNet = false // set to true for main net (default)
+  isMainNet = false // set to true for main net (default)
   Peer.debug = true // prints a lot of info
 
   val node = new BitcoinSNode(isMainNet)
@@ -46,7 +46,7 @@ object TestPeer extends App {
 }
 
 object TestUAHFPeer extends App {
-  //isMainNet = false
+  isMainNet = false
   Peer.debug = true
   val node = new BitcoinCashSNode(isMainNet)
   node.connectToAllSeeds(true)  
@@ -56,15 +56,15 @@ object TestUAHFPeer extends App {
   //node.connectTo("localhost", true) // for local or any specific node
 }
 object TestABCPeer {
-  def main(a:Array[String]):Unit = if (a.size == 1) {
-    isMainNet = true
+  def main(a:Array[String]):Unit = if (a.size == 2) {    
+    isMainNet = a(1).toBoolean
     Peer.debug = true
     val node = new BitcoinCashSNode(isMainNet)
     node.connectTo(a(0), true)
     node.addOnTxHandler("myTxHandler", tx => println(s"[tx] $tx"))
     node.addOnBlkHandler("myBlkHandler", blk => println(s"[blk] $blk"))
 
-  } else println("Usage java -cp test.jar sh.TestABCPeer <host>")
+  } else println("Usage java -cp test.jar sh.TestABCPeer <host> <isMainNet> ")
 }
 
 

@@ -13,11 +13,17 @@ class BitcoinCashSNode(isMainNet:Boolean) extends Node {
   /* Notes about constants:
      0x20 from specs
      e3e1f3e8 found via wireshark
-     0b110907 found via https://github.com/ayeowch/bitnodes/blob/e298741dec9809f55585a83c64600f06edc9d233/start.sh#L31 
+     f4e5f3f4 found via https://lists.linuxfoundation.org/pipermail/bitcoin-ml/2017-August/000072.html
+     
+   Magic:
+    mainnet: 0xe3, 0xe1, 0xf3, 0xe8
+    testnet: 0xf4, 0xe5, 0xf3, 0xf4
+    regtest: 0xda, 0xb5, 0xbf, 0xfa
+
      seeds from https://gist.github.com/scalahub/09dedd9a30ee6b42a61adf481f5830eb#file-bitcoincash-seed-servers-L53 */
   
   lazy val serviceBit:Int = 0x20
-  lazy val magicBytes = if (isMainNet) "e3e1f3e8".decodeHex else "0b110907".decodeHex
+  lazy val magicBytes = if (isMainNet) "e3e1f3e8".decodeHex else "f4e5f3f4".decodeHex
 
   val seeds = if (isMainNet) Seq(
     "abc.vom-stausee.de",
