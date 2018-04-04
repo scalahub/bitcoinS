@@ -63,6 +63,13 @@ class BitcoindAPI(rpcuser:String, rpcpassword:String, rpcHost:String) {
     )
     (xml \\ "subversion").text
   }
+  def estimateSmartFee(conf:Int, economicalMode:Boolean) = {
+    val mode = if (economicalMode) "ECONOMICAL" else "CONSERVATIVE"
+    val xml = curlXML(
+      s"""{"method":"estimatesmartfee","params":[$conf, "$mode"],"id":$id,"jsonrpc":"1.0"}"""
+    )
+    BigDecimal((xml \ "result" \ "feerate").text)
+  }
   def getConfirmations(txHash:String) = {
     val xml = curlXML(
       s"""{"method":"getrawtransaction","params":["$txHash", 1],"id":$id,"jsonrpc":"1.0"}"""
